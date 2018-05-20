@@ -3,17 +3,18 @@
 // found in the LICENSE file.
 
 #include "flutter/shell/platform/embedder/platform_view_embedder.h"
-#include "flutter/shell/gpu/gpu_rasterizer.h"
+
+#include "flutter/shell/common/io_manager.h"
 
 namespace shell {
 
-PlatformViewEmbedder::PlatformViewEmbedder(DispatchTable dispatch_table)
-    : PlatformView(std::make_unique<GPURasterizer>(nullptr)),
+PlatformViewEmbedder::PlatformViewEmbedder(PlatformView::Delegate& delegate,
+                                           blink::TaskRunners task_runners,
+                                           DispatchTable dispatch_table)
+    : PlatformView(delegate, std::move(task_runners)),
       dispatch_table_(dispatch_table) {}
 
-PlatformViewEmbedder::~PlatformViewEmbedder() {
-  NotifyDestroyed();
-}
+PlatformViewEmbedder::~PlatformViewEmbedder() = default;
 
 bool PlatformViewEmbedder::GLContextMakeCurrent() {
   return dispatch_table_.gl_make_current_callback();
@@ -31,24 +32,35 @@ intptr_t PlatformViewEmbedder::GLContextFBO() const {
   return dispatch_table_.gl_fbo_callback();
 }
 
-bool PlatformViewEmbedder::SurfaceSupportsSRGB() const {
-  return true;
+void PlatformViewEmbedder::HandlePlatformMessage(
+    fxl::RefPtr<blink::PlatformMessage> message) {
+  if (!message) {
+    return;
+  }
+
+  if (!message->response()) {
+    return;
+  }
+
+  if (dispatch_table_.platform_message_response_callback == nullptr) {
+    message->response()->CompleteEmpty();
+    return;
+  }
+
+  dispatch_table_.platform_message_response_callback(std::move(message));
 }
 
-void PlatformViewEmbedder::Attach() {
-  CreateEngine();
-  NotifyCreated(std::make_unique<shell::GPUSurfaceGL>(this));
+std::unique_ptr<Surface> PlatformViewEmbedder::CreateRenderingSurface() {
+  return std::make_unique<GPUSurfaceGL>(this);
 }
 
-bool PlatformViewEmbedder::ResourceContextMakeCurrent() {
-  // Unsupported.
-  return false;
-}
-
-void PlatformViewEmbedder::RunFromSource(const std::string& assets_directory,
-                                         const std::string& main,
-                                         const std::string& packages) {
-  FXL_LOG(INFO) << "Hot reloading is unsupported on this platform.";
+sk_sp<GrContext> PlatformViewEmbedder::CreateResourceContext() const {
+  auto callback = dispatch_table_.gl_make_resource_current_callback;
+  if (callback && callback()) {
+    return IOManager::CreateCompatibleResourceLoadingContext(
+        GrBackend::kOpenGL_GrBackend);
+  }
+  return nullptr;
 }
 
 }  // namespace shell

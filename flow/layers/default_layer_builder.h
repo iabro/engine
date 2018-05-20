@@ -47,9 +47,10 @@ class DefaultLayerBuilder final : public LayerBuilder {
                       SkBlendMode blend_mode) override;
 
   // |flow::LayerBuilder|
-  void PushPhysicalModel(const SkRRect& rect,
+  void PushPhysicalShape(const SkPath& path,
                          double elevation,
                          SkColor color,
+                         SkColor shadow_color,
                          SkScalar device_pixel_ratio) override;
 
   // |flow::LayerBuilder|
@@ -58,7 +59,7 @@ class DefaultLayerBuilder final : public LayerBuilder {
 
   // |flow::LayerBuilder|
   void PushPicture(const SkPoint& offset,
-                   sk_sp<SkPicture> picture,
+                   SkiaGPUObject<SkPicture> picture,
                    bool picture_is_complex,
                    bool picture_will_change) override;
 

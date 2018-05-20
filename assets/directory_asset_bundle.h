@@ -5,26 +5,33 @@
 #ifndef FLUTTER_ASSETS_DIRECTORY_ASSET_BUNDLE_H_
 #define FLUTTER_ASSETS_DIRECTORY_ASSET_BUNDLE_H_
 
-#include <string>
-#include <vector>
-
-#include "lib/fxl/macros.h"
+#include "flutter/assets/asset_resolver.h"
+#include "flutter/fml/macros.h"
+#include "flutter/fml/memory/ref_counted.h"
+#include "flutter/fml/unique_fd.h"
 
 namespace blink {
 
-class DirectoryAssetBundle {
+class DirectoryAssetBundle : public AssetResolver {
  public:
-  explicit DirectoryAssetBundle(std::string directory);
-  ~DirectoryAssetBundle();
+  explicit DirectoryAssetBundle(fml::UniqueFD descriptor);
 
-  bool GetAsBuffer(const std::string& asset_name, std::vector<uint8_t>* data);
+  ~DirectoryAssetBundle() override;
 
  private:
-  std::string GetPathForAsset(const std::string& asset_name);
+  const fml::UniqueFD descriptor_;
+  bool is_valid_ = false;
 
-  const std::string directory_;
+  std::string GetPathForAsset(const std::string& asset_name) const;
 
-  FXL_DISALLOW_COPY_AND_ASSIGN(DirectoryAssetBundle);
+  // |blink::AssetResolver|
+  bool IsValid() const override;
+
+  // |blink::AssetResolver|
+  bool GetAsBuffer(const std::string& asset_name,
+                   std::vector<uint8_t>* data) const override;
+
+  FML_DISALLOW_COPY_AND_ASSIGN(DirectoryAssetBundle);
 };
 
 }  // namespace blink

@@ -12,11 +12,10 @@
 #include "flutter/lib/ui/painting/frame_info.h"
 #include "flutter/lib/ui/painting/gradient.h"
 #include "flutter/lib/ui/painting/image.h"
-#include "flutter/lib/ui/painting/image_decoding.h"
 #include "flutter/lib/ui/painting/image_filter.h"
 #include "flutter/lib/ui/painting/image_shader.h"
-#include "flutter/lib/ui/painting/mask_filter.h"
 #include "flutter/lib/ui/painting/path.h"
+#include "flutter/lib/ui/painting/path_measure.h"
 #include "flutter/lib/ui/painting/picture.h"
 #include "flutter/lib/ui/painting/picture_recorder.h"
 #include "flutter/lib/ui/painting/vertices.h"
@@ -55,13 +54,12 @@ void DartUI::InitForGlobal() {
     CanvasGradient::RegisterNatives(g_natives);
     CanvasImage::RegisterNatives(g_natives);
     CanvasPath::RegisterNatives(g_natives);
+    CanvasPathMeasure::RegisterNatives(g_natives);
     Codec::RegisterNatives(g_natives);
     DartRuntimeHooks::RegisterNatives(g_natives);
     FrameInfo::RegisterNatives(g_natives);
-    ImageDecoding::RegisterNatives(g_natives);
     ImageFilter::RegisterNatives(g_natives);
     ImageShader::RegisterNatives(g_natives);
-    MaskFilter::RegisterNatives(g_natives);
     Paragraph::RegisterNatives(g_natives);
     ParagraphBuilder::RegisterNatives(g_natives);
     Picture::RegisterNatives(g_natives);

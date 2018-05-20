@@ -136,6 +136,7 @@ FileType identifyFile(String name, Reader reader) {
     case '.dex': return FileType.binary; // Dalvik Executable (usually found inside .jar archives)
     // Dart code
     case '.dart': return FileType.text;
+    case '.dill': return FileType.binary; // Compiled Dart code
     // LLVM bitcode
     case '.bc': return FileType.binary;
     // Python code
@@ -166,6 +167,7 @@ FileType identifyFile(String name, Reader reader) {
     case '.wbmp': return FileType.binary; // Wireless bitmap format
     case '.webp': return FileType.binary; // WEBP
     case '.pdf': return FileType.binary; // PDF
+    case '.emf': return FileType.binary; // Windows enhanced metafile format
     // Videos
     case '.ogg': return FileType.binary; // Ogg media
     case '.mp4': return FileType.binary; // MPEG media
@@ -178,7 +180,8 @@ FileType identifyFile(String name, Reader reader) {
     case '.apk': return FileType.zip; // Android Package
     case '.crx': return FileType.binary; // Chrome extension
     case '.keystore': return FileType.binary;
-    case '.icc': return FileType.binary;
+    case '.icc': return FileType.binary; // Color profile
+    case '.swp': return FileType.binary; // Vim swap file
     // Archives
     case '.zip': return FileType.zip; // ZIP
     case '.tar': return FileType.tar; // Tar

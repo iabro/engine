@@ -13,6 +13,7 @@
 #include "flutter/lib/ui/window/viewport_metrics.h"
 #include "lib/fxl/time/time_point.h"
 #include "lib/tonic/dart_persistent_value.h"
+#include "third_party/skia/include/gpu/GrContext.h"
 
 namespace tonic {
 class DartLibraryNatives;
@@ -20,6 +21,8 @@ class DartLibraryNatives;
 
 namespace blink {
 class Scene;
+
+Dart_Handle ToByteData(const std::vector<uint8_t>& buffer);
 
 class WindowClient {
  public:
@@ -33,12 +36,14 @@ class WindowClient {
   virtual ~WindowClient();
 };
 
-class Window {
+class Window final {
  public:
   explicit Window(WindowClient* client);
+
   ~Window();
 
   WindowClient* client() const { return client_; }
+
   const ViewportMetrics& viewport_metrics() { return viewport_metrics_; }
 
   void DidCreateIsolate();
@@ -49,7 +54,9 @@ class Window {
   void UpdateSemanticsEnabled(bool enabled);
   void DispatchPlatformMessage(fxl::RefPtr<PlatformMessage> message);
   void DispatchPointerDataPacket(const PointerDataPacket& packet);
-  void DispatchSemanticsAction(int32_t id, SemanticsAction action);
+  void DispatchSemanticsAction(int32_t id,
+                               SemanticsAction action,
+                               std::vector<uint8_t> args);
   void BeginFrame(fxl::TimePoint frameTime);
 
   void CompletePlatformMessageResponse(int response_id,

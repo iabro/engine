@@ -12,6 +12,7 @@ dependencies:
   convert: any
   crypto: any
   front_end: any
+  flutter_kernel_transformers: any
   kernel: any
   logging: any
   meta: any
@@ -21,6 +22,7 @@ dependencies:
   source_span: any
   typed_data: any
   usage: any
+  vm: any
 
 dev_dependencies:
   analyzer: any
@@ -33,7 +35,6 @@ dev_dependencies:
   http: any
   http_multi_server: any
   http_parser: any
-  isolate: any
   matcher: any
   mime: any
   mockito: any
@@ -70,6 +71,8 @@ dependency_overrides:
     path: ../../third_party/dart/third_party/pkg/convert
   crypto:
     path: ../../third_party/dart/third_party/pkg/crypto
+  flutter_kernel_transformers:
+    path: ../flutter_kernel_transformers
   front_end:
     path: ../../third_party/dart/pkg/front_end/
   kernel:
@@ -90,6 +93,8 @@ dependency_overrides:
     path: ../../third_party/dart/third_party/pkg/typed_data
   usage:
     path: ../../third_party/dart/third_party/pkg/usage
+  vm:
+    path: ../../third_party/dart/pkg/vm/
 
   analyzer:
     path: ../../third_party/dart/pkg/analyzer
@@ -111,8 +116,6 @@ dependency_overrides:
     path: ../../third_party/dart/third_party/pkg/http_multi_server
   http_parser:
     path: ../../third_party/dart/third_party/pkg/http_parser
-  isolate:
-    path: ../../third_party/dart/third_party/pkg/isolate
   matcher:
     path: ../../third_party/dart/third_party/pkg/matcher
   mime:

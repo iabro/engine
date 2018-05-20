@@ -48,7 +48,7 @@ FLUTTER_EXPORT
  On the Dart side, messages are represented using `ByteData`.
  */
 FLUTTER_EXPORT
-@interface FlutterBinaryCodec : NSObject<FlutterMessageCodec>
+@interface FlutterBinaryCodec : NSObject <FlutterMessageCodec>
 @end
 
 /**
@@ -59,7 +59,7 @@ FLUTTER_EXPORT
  on the Dart side. These parts of the Flutter SDK are evolved synchronously.
  */
 FLUTTER_EXPORT
-@interface FlutterStringCodec : NSObject<FlutterMessageCodec>
+@interface FlutterStringCodec : NSObject <FlutterMessageCodec>
 @end
 
 /**
@@ -77,7 +77,57 @@ FLUTTER_EXPORT
  package.
  */
 FLUTTER_EXPORT
-@interface FlutterJSONMessageCodec : NSObject<FlutterMessageCodec>
+@interface FlutterJSONMessageCodec : NSObject <FlutterMessageCodec>
+@end
+
+/**
+ A writer of the Flutter standard binary encoding.
+
+ See `FlutterStandardMessageCodec` for details on the encoding.
+
+ The encoding is extensible via subclasses overriding `writeValue`.
+ */
+FLUTTER_EXPORT
+@interface FlutterStandardWriter : NSObject
+- (instancetype)initWithData:(NSMutableData*)data;
+- (void)writeByte:(UInt8)value;
+- (void)writeBytes:(const void*)bytes length:(NSUInteger)length;
+- (void)writeData:(NSData*)data;
+- (void)writeSize:(UInt32)size;
+- (void)writeAlignment:(UInt8)alignment;
+- (void)writeUTF8:(NSString*)value;
+- (void)writeValue:(id)value;
+@end
+
+/**
+ A reader of the Flutter standard binary encoding.
+
+ See `FlutterStandardMessageCodec` for details on the encoding.
+
+ The encoding is extensible via subclasses overriding `readValueOfType`.
+ */
+FLUTTER_EXPORT
+@interface FlutterStandardReader : NSObject
+- (instancetype)initWithData:(NSData*)data;
+- (BOOL)hasMore;
+- (UInt8)readByte;
+- (void)readBytes:(void*)destination length:(NSUInteger)length;
+- (NSData*)readData:(NSUInteger)length;
+- (UInt32)readSize;
+- (void)readAlignment:(UInt8)alignment;
+- (NSString*)readUTF8;
+- (id)readValue;
+- (id)readValueOfType:(UInt8)type;
+@end
+
+/**
+ A factory of compatible reader/writer instances using the Flutter standard
+ binary encoding or extensions thereof.
+ */
+FLUTTER_EXPORT
+@interface FlutterStandardReaderWriter : NSObject
+- (FlutterStandardWriter*)writerWithData:(NSMutableData*)data;
+- (FlutterStandardReader*)readerWithData:(NSData*)data;
 @end
 
 /**
@@ -91,7 +141,6 @@ FLUTTER_EXPORT
 
  - `nil` or `NSNull`
  - `NSNumber` (including their representation of Boolean values)
- - `FlutterStandardBigInteger`
  - `NSString`
  - `FlutterStandardTypedData`
  - `NSArray` of supported values
@@ -101,14 +150,21 @@ FLUTTER_EXPORT
 
  - `nil` or `NSNull`: null
  - `NSNumber`: `bool`, `int`, or `double`, depending on the contained value.
- - `FlutterStandardBigInteger`: `int`
  - `NSString`: `String`
  - `FlutterStandardTypedData`: `Uint8List`, `Int32List`, `Int64List`, or `Float64List`
  - `NSArray`: `List`
  - `NSDictionary`: `Map`
+
+ Support for `FlutterStandardBigInteger` has been deprecated on 2018-01-09 to be
+ made unavailable four weeks after this change is available on the Flutter alpha
+ branch. `FlutterStandardBigInteger` were needed because the Dart 1.0 `int` type
+ had no size limit. With Dart 2.0, the `int` type is a fixed-size, 64-bit signed
+ integer. If you need to communicate larger integers, use `NSString` encoding
+ instead.
  */
 FLUTTER_EXPORT
-@interface FlutterStandardMessageCodec : NSObject<FlutterMessageCodec>
+@interface FlutterStandardMessageCodec : NSObject <FlutterMessageCodec>
++ (instancetype)codecWithReaderWriter:(FlutterStandardReaderWriter*)readerWriter;
 @end
 
 /**
@@ -253,6 +309,13 @@ FLUTTER_EXPORT
  and `FlutterStandardMethodCodec`.
  */
 FLUTTER_EXPORT
+FLUTTER_DEPRECATED(
+    "Deprecated on 2018-01-09 to be made unavailable four weeks after the "
+    "deprecation is available on the flutter/flutter alpha branch. "
+    "FlutterStandardBigInteger was needed because the Dart 1.0 int type had no "
+    "size limit. With Dart 2.0, the int type is a fixed-size, 64-bit signed "
+    "integer. If you need to communicate larger integers, use NSString encoding "
+    "instead.")
 @interface FlutterStandardBigInteger : NSObject
 /**
  Creates a `FlutterStandardBigInteger` from a hexadecimal representation.
@@ -347,7 +410,7 @@ FLUTTER_EXPORT
  those supported as top-level or leaf values by `FlutterJSONMessageCodec`.
  */
 FLUTTER_EXPORT
-@interface FlutterJSONMethodCodec : NSObject<FlutterMethodCodec>
+@interface FlutterJSONMethodCodec : NSObject <FlutterMethodCodec>
 @end
 
 /**
@@ -361,7 +424,8 @@ FLUTTER_EXPORT
  `FlutterStandardMessageCodec`.
  */
 FLUTTER_EXPORT
-@interface FlutterStandardMethodCodec : NSObject<FlutterMethodCodec>
+@interface FlutterStandardMethodCodec : NSObject <FlutterMethodCodec>
++ (instancetype)codecWithReaderWriter:(FlutterStandardReaderWriter*)readerWriter;
 @end
 
 NS_ASSUME_NONNULL_END

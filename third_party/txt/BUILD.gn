@@ -100,17 +100,8 @@ source_set("txt") {
     "src/utils/JenkinsHash.h",
     "src/utils/LruCache.h",
     "src/utils/TypeHelpers.h",
+    "src/utils/WindowsUtils.h",
   ]
-
-  if (is_mac || is_ios) {
-    set_sources_assignment_filter([])
-    sources += [ "src/txt/platform_mac.mm" ]
-    set_sources_assignment_filter(sources_assignment_filter)
-  } else if (is_android) {
-    sources += [ "src/txt/platform_android.cc" ]
-  } else {
-    sources += [ "src/txt/platform.cc" ]
-  }
 
   public_configs = [ ":txt_config" ]
 
@@ -124,6 +115,17 @@ source_set("txt") {
   deps = [
     "//third_party/skia:effects",
   ]
+
+  if (is_mac || is_ios) {
+    set_sources_assignment_filter([])
+    sources += [ "src/txt/platform_mac.mm" ]
+    set_sources_assignment_filter(sources_assignment_filter)
+    deps += [ "$flutter_root/fml" ]
+  } else if (is_android) {
+    sources += [ "src/txt/platform_android.cc" ]
+  } else {
+    sources += [ "src/txt/platform.cc" ]
+  }
 }
 
 txt_common_executable_deps = [
@@ -144,8 +146,6 @@ executable("txt_unittests") {
     "tests/ICUTestBase.h",
     "tests/LayoutUtilsTest.cpp",
     "tests/MeasurementTests.cpp",
-    "tests/MinikinFontForTest.cpp",
-    "tests/MinikinFontForTest.h",
     "tests/SparseBitSetTest.cpp",
     "tests/UnicodeUtils.cpp",
     "tests/UnicodeUtils.h",
@@ -169,9 +169,16 @@ executable("txt_unittests") {
     # "tests/LayoutTest.cpp",
   ]
 
+  if (!is_win) {
+    sources += [
+      "tests/MinikinFontForTest.cpp",
+      "tests/MinikinFontForTest.h",
+    ]
+  }
+
   deps = [
            ":txt",
-           "//third_party/gtest",
+           "//third_party/googletest:gtest",
          ] + txt_common_executable_deps
 }
 

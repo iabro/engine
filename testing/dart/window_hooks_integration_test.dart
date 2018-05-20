@@ -9,6 +9,9 @@ import 'dart:developer' as developer;
 import 'dart:math' as math;
 import 'dart:nativewrappers';
 
+// this needs to be imported because painting.dart expects it this way
+import 'dart:collection' as collection;
+
 import 'package:test/test.dart';
 
 // HACK: these parts are to get access to private functions tested here.
@@ -74,7 +77,7 @@ void main() {
       });
 
       window.onMetricsChanged();
-      _updateWindowMetrics(0.1234, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+      _updateWindowMetrics(0.1234, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
       expect(runZone, isNotNull);
       expect(runZone, same(innerZone));
       expect(devicePixelRatio, equals(0.1234));
@@ -177,20 +180,23 @@ void main() {
     test('onSemanticsAction preserves callback zone', () {
       Zone innerZone;
       Zone runZone;
+      int id;
       int action;
 
       runZoned(() {
         innerZone = Zone.current;
-        window.onSemanticsAction = (int value, _) {
+        window.onSemanticsAction = (int i, SemanticsAction a, ByteData _) {
           runZone = Zone.current;
-          action = value;
+          action = a.index;
+          id = i;
         };
       });
 
-      _dispatchSemanticsAction(1234, 0);
+      _dispatchSemanticsAction(1234, 4, null);
       expect(runZone, isNotNull);
       expect(runZone, same(innerZone));
-      expect(action, equals(1234));
+      expect(id, equals(1234));
+      expect(action, equals(4));
     });
 
     test('onPlatformMessage preserves callback zone', () {

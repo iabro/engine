@@ -31,12 +31,18 @@ SkTypeface* AssetFontStyleSet::createTypeface(int index) {
   if (index_cast >= typefaces_.size()) {
     return nullptr;
   }
-  return typefaces_[index_cast].get();
+  return SkRef(typefaces_[index_cast].get());
 }
 
 SkTypeface* AssetFontStyleSet::matchStyle(const SkFontStyle& pattern) {
-  FXL_DCHECK(false);
-  return nullptr;
+  if (typefaces_.empty())
+    return nullptr;
+
+  for (const sk_sp<SkTypeface>& typeface : typefaces_)
+    if (typeface->fontStyle() == pattern)
+      return typeface.get();
+
+  return SkRef(typefaces_[0].get());
 }
 
 }  // namespace txt

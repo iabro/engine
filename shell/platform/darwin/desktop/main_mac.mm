@@ -9,16 +9,18 @@
 #include "flutter/fml/message_loop.h"
 #include "flutter/shell/common/shell.h"
 #include "flutter/shell/common/switches.h"
-#include "flutter/shell/platform/darwin/common/platform_mac.h"
-#include "flutter/shell/platform/darwin/desktop/flutter_application.h"
-#include "flutter/shell/testing/testing.h"
+#include "flutter/shell/platform/darwin/desktop/flutter_application_delegate.h"
+#include "lib/fxl/command_line.h"
+#include "lib/fxl/logging.h"
 
 int main(int argc, const char* argv[]) {
-  [FlutterApplication sharedApplication];
+  std::vector<std::string> args_vector;
 
-  shell::PlatformMacMain("", "");
+  for (NSString* arg in [NSProcessInfo processInfo].arguments) {
+    args_vector.emplace_back(arg.UTF8String);
+  }
 
-  const auto& command_line = shell::Shell::Shared().GetCommandLine();
+  auto command_line = fxl::CommandLineFromIterators(args_vector.begin(), args_vector.end());
 
   // Print help.
   if (command_line.HasOption(shell::FlagForSwitch(shell::Switch::Help))) {
@@ -26,13 +28,7 @@ int main(int argc, const char* argv[]) {
     return EXIT_SUCCESS;
   }
 
-  // Decide between interactive and non-interactive modes.
-  if (command_line.HasOption(shell::FlagForSwitch(shell::Switch::NonInteractive))) {
-    if (!shell::InitForTesting(std::move(command_line)))
-      return 1;
-    fml::MessageLoop::GetCurrent().Run();
-    return EXIT_SUCCESS;
-  } else {
-    return NSApplicationMain(argc, argv);
-  }
+  [NSApplication sharedApplication].delegate =
+      [[[FlutterApplicationDelegate alloc] init] autorelease];
+  return NSApplicationMain(argc, argv);
 }

@@ -3,16 +3,12 @@
 // found in the LICENSE file.
 
 #include "flutter/shell/platform/android/android_context_gl.h"
+
 #include <EGL/eglext.h>
+
 #include <utility>
 
-#ifndef EGL_GL_COLORSPACE_KHR
-#define EGL_GL_COLORSPACE_KHR 0x309D
-#endif
-
-#ifndef EGL_GL_COLORSPACE_SRGB_KHR
-#define EGL_GL_COLORSPACE_SRGB_KHR 0x3089
-#endif
+#include "flutter/fml/trace_event.h"
 
 namespace shell {
 
@@ -73,19 +69,17 @@ static EGLResult<EGLSurface> CreateContext(EGLDisplay display,
   return {context != EGL_NO_CONTEXT, context};
 }
 
-static EGLResult<EGLConfig> ChooseEGLConfiguration(
-    EGLDisplay display,
-    PlatformView::SurfaceConfig config) {
+static EGLResult<EGLConfig> ChooseEGLConfiguration(EGLDisplay display) {
   EGLint attributes[] = {
       // clang-format off
       EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
       EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-      EGL_RED_SIZE,        config.red_bits,
-      EGL_GREEN_SIZE,      config.green_bits,
-      EGL_BLUE_SIZE,       config.blue_bits,
-      EGL_ALPHA_SIZE,      config.alpha_bits,
-      EGL_DEPTH_SIZE,      config.depth_bits,
-      EGL_STENCIL_SIZE,    config.stencil_bits,
+      EGL_RED_SIZE,        8,
+      EGL_GREEN_SIZE,      8,
+      EGL_BLUE_SIZE,       8,
+      EGL_ALPHA_SIZE,      8,
+      EGL_DEPTH_SIZE,      0,
+      EGL_STENCIL_SIZE,    0,
       EGL_NONE,            // termination sentinel
       // clang-format on
   };
@@ -128,14 +122,7 @@ bool AndroidContextGL::CreateWindowSurface(
   window_ = std::move(window);
   EGLDisplay display = environment_->Display();
 
-  const EGLint srgb_attribs[] = {EGL_GL_COLORSPACE_KHR,
-                                 EGL_GL_COLORSPACE_SRGB_KHR, EGL_NONE};
-  const EGLint default_attribs[] = {EGL_NONE};
-
-  const EGLint* attribs = default_attribs;
-  if (srgb_support_) {
-    attribs = srgb_attribs;
-  }
+  const EGLint attribs[] = {EGL_NONE};
 
   surface_ = eglCreateWindowSurface(
       display, config_,
@@ -150,26 +137,13 @@ bool AndroidContextGL::CreatePBufferSurface() {
 
   EGLDisplay display = environment_->Display();
 
-  const EGLint srgb_attribs[] = {EGL_WIDTH,
-                                 1,
-                                 EGL_HEIGHT,
-                                 1,
-                                 EGL_GL_COLORSPACE_KHR,
-                                 EGL_GL_COLORSPACE_SRGB_KHR,
-                                 EGL_NONE};
-  const EGLint default_attribs[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE};
-
-  const EGLint* attribs = default_attribs;
-  if (srgb_support_) {
-    attribs = srgb_attribs;
-  }
+  const EGLint attribs[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE};
 
   surface_ = eglCreatePbufferSurface(display, config_, attribs);
   return surface_ != EGL_NO_SURFACE;
 }
 
 AndroidContextGL::AndroidContextGL(fxl::RefPtr<AndroidEnvironmentGL> env,
-                                   PlatformView::SurfaceConfig config,
                                    const AndroidContextGL* share_context)
     : environment_(env),
       window_(nullptr),
@@ -185,8 +159,7 @@ AndroidContextGL::AndroidContextGL(fxl::RefPtr<AndroidEnvironmentGL> env,
 
   // Choose a valid configuration.
 
-  std::tie(success, config_) =
-      ChooseEGLConfiguration(environment_->Display(), config);
+  std::tie(success, config_) = ChooseEGLConfiguration(environment_->Display());
 
   if (!success) {
     FXL_LOG(ERROR) << "Could not choose an EGL configuration.";
@@ -205,12 +178,6 @@ AndroidContextGL::AndroidContextGL(fxl::RefPtr<AndroidEnvironmentGL> env,
     LogLastEGLError();
     return;
   }
-
-  // On its own, this is not enough to guarantee that we will render in
-  // sRGB mode. We also need to query GL using the GrContext.
-
-  const char* exts = eglQueryString(environment_->Display(), EGL_EXTENSIONS);
-  srgb_support_ = strstr(exts, "EGL_KHR_gl_colorspace");
 
   if (!this->CreatePBufferSurface()) {
     FXL_LOG(ERROR) << "Could not create the EGL surface.";
@@ -300,10 +267,6 @@ bool AndroidContextGL::Resize(const SkISize& size) {
   MakeCurrent();
 
   return true;
-}
-
-bool AndroidContextGL::SupportsSRGB() const {
-  return srgb_support_;
 }
 
 }  // namespace shell

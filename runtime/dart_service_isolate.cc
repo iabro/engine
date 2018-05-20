@@ -125,7 +125,7 @@ bool DartServiceIsolate::Startup(std::string server_ip,
     result = Dart_FinalizeLoading(false);
     SHUTDOWN_ON_ERROR(result);
   } else {
-    Dart_Handle uri = Dart_NewStringFromCString("dart:vmservice_sky");
+    Dart_Handle uri = Dart_NewStringFromCString("dart:vmservice_io");
     Dart_Handle library = Dart_LookupLibrary(uri);
     SHUTDOWN_ON_ERROR(library);
     result = Dart_SetRootLibrary(library);
@@ -137,11 +137,10 @@ bool DartServiceIsolate::Startup(std::string server_ip,
   // Make runnable.
   Dart_ExitScope();
   Dart_ExitIsolate();
-  bool retval = Dart_IsolateMakeRunnable(isolate);
-  if (!retval) {
+  *error = Dart_IsolateMakeRunnable(isolate);
+  if (*error) {
     Dart_EnterIsolate(isolate);
     Dart_ShutdownIsolate();
-    *error = strdup("Invalid isolate state - Unable to make it runnable.");
     return false;
   }
   Dart_EnterIsolate(isolate);
@@ -187,7 +186,7 @@ Dart_Handle DartServiceIsolate::GetSource(const char* name) {
 }
 
 Dart_Handle DartServiceIsolate::LoadScript(const char* name) {
-  Dart_Handle url = Dart_NewStringFromCString("dart:vmservice_sky");
+  Dart_Handle url = Dart_NewStringFromCString("dart:vmservice_io");
   Dart_Handle source = GetSource(name);
   return Dart_LoadScript(url, Dart_Null(), source, 0, 0);
 }

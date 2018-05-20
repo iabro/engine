@@ -7,16 +7,20 @@
 #include <memory>
 #include <mutex>
 
+#include "flutter/fml/build_config.h"
+#include "flutter/fml/logging.h"
 #include "flutter/fml/mapping.h"
 #include "flutter/fml/paths.h"
-#include "lib/fxl/build_config.h"
-#include "lib/fxl/logging.h"
 #include "third_party/icu/source/common/unicode/udata.h"
 
 namespace fml {
 namespace icu {
 
-static constexpr char kIcuDataFileName[] = "icudtl.dat";
+#if OS_WIN
+static constexpr char kPathSeparator = '\\';
+#else
+static constexpr char kPathSeparator = '/';
+#endif
 
 class ICUContext {
  public:
@@ -28,15 +32,15 @@ class ICUContext {
 
   bool SetupMapping(const std::string& icu_data_path) {
     // Check if the explicit path specified exists.
-    auto overriden_path_mapping = std::make_unique<FileMapping>(icu_data_path);
-    if (overriden_path_mapping->GetSize() != 0) {
-      mapping_ = std::move(overriden_path_mapping);
+    auto path_mapping = std::make_unique<FileMapping>(icu_data_path, false);
+    if (path_mapping->GetSize() != 0) {
+      mapping_ = std::move(path_mapping);
       return true;
     }
 
     // Check to see if the mapping is in the resources bundle.
     if (PlatformHasResourcesBundle()) {
-      auto resource = GetResourceMapping(kIcuDataFileName);
+      auto resource = GetResourceMapping(icu_data_path);
       if (resource != nullptr && resource->GetSize() != 0) {
         mapping_ = std::move(resource);
         return true;
@@ -51,10 +55,8 @@ class ICUContext {
       return false;
     }
 
-    // FIXME(chinmaygarde): There is no Path::Join in FXL. So a non-portable
-    // version is used here. Patch FXL and update.
-    auto file = std::make_unique<FileMapping>(directory.second + "/" +
-                                              kIcuDataFileName);
+    auto file = std::make_unique<FileMapping>(
+        directory.second + kPathSeparator + icu_data_path, false);
     if (file->GetSize() != 0) {
       mapping_ = std::move(file);
       return true;
@@ -85,12 +87,13 @@ class ICUContext {
   bool valid_;
   std::unique_ptr<Mapping> mapping_;
 
-  FXL_DISALLOW_COPY_AND_ASSIGN(ICUContext);
+  FML_DISALLOW_COPY_AND_ASSIGN(ICUContext);
 };
 
 void InitializeICUOnce(const std::string& icu_data_path) {
   static ICUContext* context = new ICUContext(icu_data_path);
-  FXL_CHECK(context->IsValid()) << "Must be able to initialize the ICU context";
+  FML_CHECK(context->IsValid())
+      << "Must be able to initialize the ICU context. Tried: " << icu_data_path;
 }
 
 std::once_flag g_icu_init_flag;

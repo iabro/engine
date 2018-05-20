@@ -14,7 +14,7 @@
 #include "flutter/flow/layers/layer_tree.h"
 #include "flutter/flow/layers/opacity_layer.h"
 #include "flutter/flow/layers/performance_overlay_layer.h"
-#include "flutter/flow/layers/physical_model_layer.h"
+#include "flutter/flow/layers/physical_shape_layer.h"
 #include "flutter/flow/layers/picture_layer.h"
 #include "flutter/flow/layers/shader_mask_layer.h"
 #include "flutter/flow/layers/texture_layer.h"
@@ -26,8 +26,10 @@
 
 namespace flow {
 
+static const SkRect kGiantRect = SkRect::MakeLTRB( -1E9F, -1E9F, 1E9F, 1E9F );
+
 DefaultLayerBuilder::DefaultLayerBuilder() {
-  cull_rects_.push(SkRect::MakeLargest());
+  cull_rects_.push(kGiantRect);
 }
 
 DefaultLayerBuilder::~DefaultLayerBuilder() = default;
@@ -38,7 +40,7 @@ void DefaultLayerBuilder::PushTransform(const SkMatrix& sk_matrix) {
   if (sk_matrix.invert(&inverse_sk_matrix)) {
     inverse_sk_matrix.mapRect(&cullRect, cull_rects_.top());
   } else {
-    cullRect = SkRect::MakeLargest();
+    cullRect = kGiantRect;
   }
 
   auto layer = std::make_unique<flow::TransformLayer>();
@@ -106,18 +108,20 @@ void DefaultLayerBuilder::PushShaderMask(sk_sp<SkShader> shader,
   PushLayer(std::move(layer), cull_rects_.top());
 }
 
-void DefaultLayerBuilder::PushPhysicalModel(const SkRRect& sk_rrect,
+void DefaultLayerBuilder::PushPhysicalShape(const SkPath& sk_path,
                                             double elevation,
                                             SkColor color,
+                                            SkColor shadow_color,
                                             SkScalar device_pixel_ratio) {
   SkRect cullRect;
-  if (!cullRect.intersect(sk_rrect.rect(), cull_rects_.top())) {
+  if (!cullRect.intersect(sk_path.getBounds(), cull_rects_.top())) {
     cullRect = SkRect::MakeEmpty();
   }
-  auto layer = std::make_unique<flow::PhysicalModelLayer>();
-  layer->set_rrect(sk_rrect);
+  auto layer = std::make_unique<flow::PhysicalShapeLayer>();
+  layer->set_path(sk_path);
   layer->set_elevation(elevation);
   layer->set_color(color);
+  layer->set_shadow_color(shadow_color);
   layer->set_device_pixel_ratio(device_pixel_ratio);
   PushLayer(std::move(layer), cullRect);
 }
@@ -133,20 +137,20 @@ void DefaultLayerBuilder::PushPerformanceOverlay(uint64_t enabled_options,
 }
 
 void DefaultLayerBuilder::PushPicture(const SkPoint& offset,
-                                      sk_sp<SkPicture> picture,
+                                      SkiaGPUObject<SkPicture> picture,
                                       bool picture_is_complex,
                                       bool picture_will_change) {
   if (!current_layer_) {
     return;
   }
-  SkRect pictureRect = picture->cullRect();
+  SkRect pictureRect = picture.get()->cullRect();
   pictureRect.offset(offset.x(), offset.y());
   if (!SkRect::Intersects(pictureRect, cull_rects_.top())) {
     return;
   }
   auto layer = std::make_unique<flow::PictureLayer>();
   layer->set_offset(offset);
-  layer->set_picture(picture);
+  layer->set_picture(std::move(picture));
   layer->set_is_complex(picture_is_complex);
   layer->set_will_change(picture_will_change);
   current_layer_->Add(std::move(layer));

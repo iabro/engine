@@ -8,7 +8,7 @@ import android.content.ComponentCallbacks2;
 import android.content.Intent;
 import android.os.Bundle;
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
-import io.flutter.plugin.common.PluginRegistry.RequestPermissionResultListener;
+import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener;
 
 /**
  * A collection of Android {@code Activity} methods that are relevant to the
@@ -21,7 +21,9 @@ import io.flutter.plugin.common.PluginRegistry.RequestPermissionResultListener;
  * {@code FlutterActivity}.</p>
  */
 public interface FlutterActivityEvents
-        extends ComponentCallbacks2, ActivityResultListener, RequestPermissionResultListener {
+        extends ComponentCallbacks2,
+                ActivityResultListener,
+                RequestPermissionsResultListener {
     /**
      * @see android.app.Activity#onCreate(android.os.Bundle)
      */
@@ -38,6 +40,11 @@ public interface FlutterActivityEvents
     void onPause();
 
     /**
+     * @see android.app.Activity#onStart()
+     */
+    void onStart();
+
+    /**
      * @see android.app.Activity#onResume()
      */
     void onResume();
@@ -52,6 +59,11 @@ public interface FlutterActivityEvents
      */
     void onDestroy();
 
+    /**
+     * @see android.app.Activity#onStop()
+     */
+    void onStop();
+    
     /**
      * Invoked when the activity has detected the user's press of the back key.
      *

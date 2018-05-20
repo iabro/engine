@@ -2,32 +2,32 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("$flutter_root/common/config.gni")
+
 group("flutter") {
   testonly = true
 
   public_deps = [
-    "$flutter_root/lib/snapshot:compile_platform",
     "$flutter_root/lib/snapshot:generate_snapshot_bin",
+    "$flutter_root/lib/snapshot:kernel_platform_files",
     "$flutter_root/sky",
-    "$flutter_root/third_party/txt",
   ]
 
-  if (!is_fuchsia) {
+  if (current_toolchain == host_toolchain) {
+    public_deps += [ "$flutter_root/shell/testing" ]
+  }
+
+  if (flutter_runtime_mode != "debug") {
+    public_deps += [ "$flutter_root/lib/snapshot:entry_points_json_files" ]
+  }
+
+  if (!is_fuchsia && !is_fuchsia_host) {
     if (current_toolchain == host_toolchain) {
       public_deps += [
         "$flutter_root/frontend_server",
         "//third_party/dart:create_sdk",
       ]
     }
-  }
-
-  if (is_fuchsia) {
-    public_deps += [
-      "$flutter_root/content_handler",
-      "$flutter_root/content_handler:aot_content_handler",
-      "$flutter_root/examples",
-      "$flutter_root/flow",
-    ]
   }
 
   # If on the host, compile all unittests targets.
@@ -38,21 +38,23 @@ group("flutter") {
         "$flutter_root/shell/platform/embedder:flutter_embedder_framework",
       ]
     }
+
+    public_deps += [
+      "$flutter_root/flow:flow_unittests",
+      "$flutter_root/fml:fml_unittests",
+      "$flutter_root/runtime:runtime_unittests",
+      "$flutter_root/shell/common:shell_unittests",
+      "$flutter_root/synchronization:synchronization_unittests",
+      "$flutter_root/third_party/txt:txt_unittests",
+      "//garnet/public/lib/fxl:fxl_unittests",
+    ]
+
     if (!is_win) {
       public_deps += [
         "$flutter_root/shell/platform/embedder:embedder_unittests",
         "$flutter_root/shell/platform/embedder:flutter_engine",
       ]
     }
-    public_deps += [
-      "$flutter_root/flow:flow_unittests",
-      "$flutter_root/fml:fml_unittests",
-      "$flutter_root/sky/engine/wtf:wtf_unittests",
-      "$flutter_root/synchronization:synchronization_unittests",
-      "$flutter_root/third_party/txt:txt_benchmarks",
-      "$flutter_root/third_party/txt:txt_unittests",
-      "//garnet/public/lib/fxl:fxl_unittests",
-    ]
   }
 }
 
@@ -60,34 +62,10 @@ config("config") {
   include_dirs = [ ".." ]
 }
 
-if (is_fuchsia) {
-  import("//packages/package.gni")
+group("dist") {
+  testonly = true
 
-  package("package") {
-    system_image = true
-    testonly = true
-
-    package_name = "flutter"
-
-    deps = [
-      ":flutter",
-    ]
-
-    binaries = [
-      {
-        name = "flutter_jit_runner"
-      },
-      {
-        name = "flutter_aot_runner"
-      },
-    ]
-  }
-} else {
-  group("dist") {
-    testonly = true
-
-    deps = [
-      "$flutter_root/sky/dist",
-    ]
-  }
+  deps = [
+    "$flutter_root/sky/dist",
+  ]
 }

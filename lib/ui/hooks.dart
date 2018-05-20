@@ -5,35 +5,53 @@
 part of dart.ui;
 
 String _decodeUTF8(ByteData message) {
-  return message != null ? UTF8.decoder.convert(message.buffer.asUint8List()) : null;
+  return message != null ? utf8.decoder.convert(message.buffer.asUint8List()) : null;
 }
 
 dynamic _decodeJSON(String message) {
-  return message != null ? JSON.decode(message) : null;
+  return message != null ? json.decode(message) : null;
 }
 
 void _updateWindowMetrics(double devicePixelRatio,
                           double width,
                           double height,
-                          double top,
-                          double right,
-                          double bottom,
-                          double left) {
+                          double paddingTop,
+                          double paddingRight,
+                          double paddingBottom,
+                          double paddingLeft,
+                          double viewInsetTop,
+                          double viewInsetRight,
+                          double viewInsetBottom,
+                          double viewInsetLeft) {
   window
     .._devicePixelRatio = devicePixelRatio
     .._physicalSize = new Size(width, height)
     .._padding = new WindowPadding._(
-      top: top, right: right, bottom: bottom, left: left);
+        top: paddingTop,
+        right: paddingRight,
+        bottom: paddingBottom,
+        left: paddingLeft)
+    .._viewInsets = new WindowPadding._(
+        top: viewInsetTop,
+        right: viewInsetRight,
+        bottom: viewInsetBottom,
+        left: viewInsetLeft);
   _invoke(window.onMetricsChanged, window._onMetricsChangedZone);
 }
+
+typedef String _LocaleClosure();
+
+String _localeClosure() => window._locale.toString();
+
+_LocaleClosure _getLocaleClosure() => _localeClosure;
 
 void _updateLocale(String languageCode, String countryCode) {
   window._locale = new Locale(languageCode, countryCode);
   _invoke(window.onLocaleChanged, window._onLocaleChangedZone);
 }
 
-void _updateUserSettingsData(String json) {
-  final Map<String, dynamic> data = JSON.decode(json);
+void _updateUserSettingsData(String jsonData) {
+  final Map<String, dynamic> data = json.decode(jsonData);
   _updateTextScaleFactor(data['textScaleFactor'].toDouble());
   _updateAlwaysUse24HourFormat(data['alwaysUse24HourFormat']);
 }
@@ -73,12 +91,13 @@ void _dispatchPointerDataPacket(ByteData packet) {
     _invoke1<PointerDataPacket>(window.onPointerDataPacket, window._onPointerDataPacketZone, _unpackPointerDataPacket(packet));
 }
 
-void _dispatchSemanticsAction(int id, int action) {
-  _invoke2<int, SemanticsAction>(
+void _dispatchSemanticsAction(int id, int action, ByteData args) {
+  _invoke3<int, SemanticsAction, ByteData>(
     window.onSemanticsAction,
     window._onSemanticsActionZone,
     id,
     SemanticsAction.values[action],
+    args,
   );
 }
 
@@ -114,7 +133,7 @@ void _invoke1<A>(void callback(A a), Zone zone, A arg) {
   if (identical(zone, Zone.current)) {
     callback(arg);
   } else {
-    zone.runUnaryGuarded<Null, A>(callback, arg);
+    zone.runUnaryGuarded<A>(callback, arg);
   }
 }
 
@@ -128,7 +147,7 @@ void _invoke2<A1, A2>(void callback(A1 a1, A2 a2), Zone zone, A1 arg1, A2 arg2) 
   if (identical(zone, Zone.current)) {
     callback(arg1, arg2);
   } else {
-    zone.runBinaryGuarded<Null, A1, A2>(callback, arg1, arg2);
+    zone.runBinaryGuarded<A1, A2>(callback, arg1, arg2);
   }
 }
 
@@ -155,11 +174,11 @@ void _invoke3<A1, A2, A3>(void callback(A1 a1, A2 a2, A3 a3), Zone zone, A1 arg1
 const int _kPointerDataFieldCount = 19;
 
 PointerDataPacket _unpackPointerDataPacket(ByteData packet) {
-  const int kStride = Int64List.BYTES_PER_ELEMENT;
+  const int kStride = Int64List.bytesPerElement;
   const int kBytesPerPointerData = _kPointerDataFieldCount * kStride;
   final int length = packet.lengthInBytes ~/ kBytesPerPointerData;
   assert(length * kBytesPerPointerData == packet.lengthInBytes);
-  List<PointerData> data = new List<PointerData>(length);
+  final List<PointerData> data = new List<PointerData>(length);
   for (int i = 0; i < length; ++i) {
     int offset = i * _kPointerDataFieldCount;
     data[i] = new PointerData(

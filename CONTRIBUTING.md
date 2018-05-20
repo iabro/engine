@@ -23,7 +23,7 @@ Things you will need
  * git (used for source version control).
  * An IDE. We recommend [IntelliJ with the Flutter plugin](https://flutter.io/intellij-ide/) or Xcode.
  * An ssh client (used to authenticate with GitHub).
- * Chromium's [depot_tools](http://www.chromium.org/developers/how-tos/install-depot-tools) (make sure it's in your path). We use the `gclient` tool from depot_tools.
+ * Chromium's [depot_tools](http://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html#_setting_up) (make sure it's in your path). We use the `gclient` tool from depot_tools.
  * Python (used by many of our tools, including 'gclient').
  * On Mac OS X and Linux: curl and unzip (used by `gclient sync`).
  * On Windows: Visual Studio (required for non-Googlers only).
@@ -53,7 +53,6 @@ solutions = [
     "safesync_url": "",
   },
 ]
-target_os = ["android"]
 ```
 
  * `cd engine` (Change to the directory in which you put the `.gclient` file.)
@@ -61,8 +60,6 @@ target_os = ["android"]
  * `cd src/flutter` (Change to the `flutter` directory of the `src` directory that `gclient sync` created in your `engine` directory.)
  * `git remote add upstream git@github.com:flutter/engine.git` (So that you fetch from the master `flutter/engine` repository, not your clone, when running `git fetch` et al.)
  * `cd ..` (Return to the `src` directory that `gclient sync` created in your `engine` directory.)
- * Add `.../engine/src/third_party/android_tools/sdk/platform-tools` to your path so that you can run the `adb` tool more easily. This is also required by the `flutter` tool, which is used to run Flutter apps.
- * Make sure you are still in the `src` directory that the `gclient sync` step created earlier.
  * If you're on Linux, run `sudo ./build/install-build-deps-android.sh`
  * If you're on Linux, run `sudo ./build/install-build-deps.sh`
  * If you're on Mac, install Oracle's Java JDK, version 1.7 or later.
@@ -98,8 +95,10 @@ Run the following steps, from the `src` directory created in the steps above:
 
 * `git pull upstream master` in `src/flutter` to update the Flutter Engine repo.
 * `gclient sync` to update your dependencies.
-* `./flutter/tools/gn --android --unoptimized` to prepare your build files (or `--android --android-cpu [x86|x64] --unoptimized` for x86/x64 emulators) .
-* `ninja -C out/android_debug_unopt` to actually build the Android binary (or `out/android_debug_unopt_x64 for x86/x64 emulators).
+* `./flutter/tools/gn --android --unoptimized` to prepare your build files for device-side executables (or `--android --android-cpu [x86|x64] --unoptimized` for x86/x64 emulators) .
+* `./flutter/tools/gn --unoptimized` to prepare the build files for host-side executables.
+* `ninja -C out/android_debug_unopt && ninja -C out/host_debug_unopt` to build all executables (use `out/android_debug_unopt_x64` for x86/x64 emulators).
+    * For Googlers, consider also using the option `-j 1000` to parallelize the build using Goma.
 
 This builds a debug-enabled ("unoptimized") binary configured to run Dart in
 checked mode ("debug"). There are other versions, [discussed on the wiki](https://github.com/flutter/flutter/wiki/Flutter's-modes).
@@ -137,13 +136,15 @@ to test the engine.
 
 ### iOS (cross-compiling from Mac)
 
-* Make sure you have Xcode 7.3.0+ installed.
+* Make sure you have Xcode 9.0+ installed.
 * `git pull upstream master` in `src/flutter` to update the Flutter Engine repo.
 * `gclient sync` to update dependencies.
-* `./flutter/tools/gn --ios --unoptimized` to prepare build files (or `--ios --simulator --unoptimized` for simulator).
+* `./flutter/tools/gn --ios --unoptimized` to prepare build files for device-side executables (or `--ios --simulator --unoptimized` for simulator).
   * For a discussion on the various flags and modes, [read this discussion](https://github.com/flutter/flutter/wiki/Flutter's-modes).
   * This also produces an Xcode project for working with the engine source code at `out/ios_debug_unopt`
-* `ninja -C out/ios_debug_unopt` to build iOS artifacts (or `out/ios_debug_sim_unopt` for simulator).
+* `./flutter/tools/gn --unoptimized` to prepare the build files for host-side executables.
+* `ninja -C out/ios_debug_unopt && ninja -C out/host_debug_unopt` to build all artifacts (use `out/ios_debug_sim_unopt` for Simulator).
+    * For Googlers, consider also using the option `-j 1000` to parallelize the build using Goma.
 
 Once the artifacts are built, you can start using them in your application by following these steps:
 * `cd /path/to/flutter/examples/hello_world`
@@ -154,15 +155,18 @@ Once the artifacts are built, you can start using them in your application by fo
 
 ### Desktop (Mac and Linux), for tests
 
+To run the tests, you should first clone [the main Flutter repository](https://github.com/flutter/flutter).
+See [the instructions for contributing](https://github.com/flutter/flutter/blob/master/CONTRIBUTING.md)
+to the main Flutter repository for detailed instructions. By default, Flutter will use the bundled version
+of the engine. Follow the next steps to run tests using the locally-built engine:
+
 * `git pull upstream master` in `src/flutter` to update the Flutter Engine repo.
 * `gclient sync` to update your dependencies.
 * `./flutter/tools/gn --unoptimized` to prepare your build files.
 * `ninja -C out/host_debug_unopt` to build a desktop unoptimized binary.
+    * For Googlers, consider also using the option `-j 1000` to parallelize the build using Goma.
 * `--unoptimized` disables C++ compiler optimizations and does not strip debug symbols. You may skip the flag and invoke `ninja -C out/host_debug` if you would rather have the native components optimized.
-
-To run the tests, you'll also need to clone [the main Flutter repository](https://github.com/flutter/flutter).
-See [the instructions for contributing](https://github.com/flutter/flutter/blob/master/CONTRIBUTING.md)
-to the main Flutter repository for detailed instructions.
+* `flutter test --local-engine=host_debug_unopt` will run tests using the locally-built `flutter_tester`.
 
 ### Desktop (gen_snapshot for Windows)
 
@@ -197,15 +201,14 @@ flutter/tools/gn --android --runtime-mode=release
 
 cd out
 find . -mindepth 1 -maxdepth 1 -type d | xargs -n 1 sh -c 'ninja -C $0 || exit 255'
-
-flutter update-packages --upgrade
 ```
 
 
 Contributing code
 -----------------
 
-We gladly accept contributions via GitHub pull requests.
+We gladly accept contributions via GitHub pull requests. See [the wiki](https://github.com/flutter/engine/wiki) for
+information about the engine's architecture.
 
 To start working on a patch:
 

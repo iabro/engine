@@ -4,40 +4,53 @@
 
 #include "flutter/assets/directory_asset_bundle.h"
 
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <utility>
 
-#include "lib/fxl/files/eintr_wrapper.h"
-#include "lib/fxl/files/file.h"
-#include "lib/fxl/files/path.h"
-#include "lib/fxl/files/unique_fd.h"
+#include "flutter/fml/eintr_wrapper.h"
+#include "flutter/fml/file.h"
+#include "flutter/fml/mapping.h"
 
 namespace blink {
 
-bool DirectoryAssetBundle::GetAsBuffer(const std::string& asset_name,
-                                       std::vector<uint8_t>* data) {
-  std::string asset_path = GetPathForAsset(asset_name);
-  if (asset_path.empty())
-    return false;
-  return files::ReadFileToVector(asset_path, data);
+DirectoryAssetBundle::DirectoryAssetBundle(fml::UniqueFD descriptor)
+    : descriptor_(std::move(descriptor)) {
+  if (!fml::IsDirectory(descriptor_)) {
+    return;
+  }
+  is_valid_ = true;
 }
 
-DirectoryAssetBundle::~DirectoryAssetBundle() {}
+DirectoryAssetBundle::~DirectoryAssetBundle() = default;
 
-DirectoryAssetBundle::DirectoryAssetBundle(std::string directory)
-    : directory_(std::move(directory)) {}
+// |blink::AssetResolver|
+bool DirectoryAssetBundle::IsValid() const {
+  return is_valid_;
+}
 
-std::string DirectoryAssetBundle::GetPathForAsset(
-    const std::string& asset_name) {
-  std::string asset_path = files::SimplifyPath(directory_ + "/" + asset_name);
-  if (asset_path.find(directory_) != 0u) {
-    FXL_LOG(ERROR) << "Asset name '" << asset_name
-                   << "' attempted to traverse outside asset bundle.";
-    return std::string();
+// |blink::AssetResolver|
+bool DirectoryAssetBundle::GetAsBuffer(const std::string& asset_name,
+                                       std::vector<uint8_t>* data) const {
+  if (data == nullptr) {
+    return false;
   }
-  return asset_path;
+
+  if (!is_valid_) {
+    FML_DLOG(WARNING) << "Asset bundle was not valid.";
+    return false;
+  }
+
+  fml::FileMapping mapping(
+      fml::OpenFile(descriptor_, asset_name.c_str(), fml::OpenPermission::kRead,
+                    false /* directory */),
+      false /* executable */);
+
+  if (mapping.GetMapping() == nullptr) {
+    return false;
+  }
+
+  data->resize(mapping.GetSize());
+  memmove(data->data(), mapping.GetMapping(), mapping.GetSize());
+  return true;
 }
 
 }  // namespace blink

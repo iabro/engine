@@ -25,7 +25,7 @@ FontCollection& FontCollection::ForProcess() {
 
 FontCollection::FontCollection()
     : collection_(std::make_shared<txt::FontCollection>()) {
-  collection_->PushBack(SkFontMgr::RefDefault());
+  collection_->SetDefaultFontManager(SkFontMgr::RefDefault());
 }
 
 FontCollection::~FontCollection() = default;
@@ -34,14 +34,9 @@ std::shared_ptr<txt::FontCollection> FontCollection::GetFontCollection() const {
   return collection_;
 }
 
-void FontCollection::RegisterFontsFromAssetStore(
-    fxl::RefPtr<blink::ZipAssetStore> asset_store) {
-  if (!asset_store) {
-    return;
-  }
-
+void FontCollection::RegisterFonts(const AssetManager& asset_manager) {
   std::vector<uint8_t> manifest_data;
-  if (!asset_store->GetAsBuffer("FontManifest.json", &manifest_data)) {
+  if (!asset_manager.GetAsBuffer("FontManifest.json", &manifest_data)) {
     FXL_DLOG(WARNING) << "Could not find the font manifest in the asset store.";
     return;
   }
@@ -91,7 +86,8 @@ void FontCollection::RegisterFontsFromAssetStore(
 
       // TODO: Handle weights and styles.
       std::vector<uint8_t> font_data;
-      if (asset_store->GetAsBuffer(font_asset->value.GetString(), &font_data)) {
+      if (asset_manager.GetAsBuffer(font_asset->value.GetString(),
+                                    &font_data)) {
         // The data must be copied because it needs to be moved into the
         // typeface as a stream.
         auto data =
@@ -104,7 +100,7 @@ void FontCollection::RegisterFontsFromAssetStore(
     }
   }
 
-  collection_->PushFront(
+  collection_->SetAssetFontManager(
       sk_make_sp<txt::AssetFontManager>(std::move(font_asset_data_provider)));
 }
 
@@ -118,8 +114,10 @@ void FontCollection::RegisterTestFonts() {
   asset_data_provider->RegisterTypeface(std::move(test_typeface),
                                         GetTestFontFamilyName());
 
-  collection_->PushFront(sk_make_sp<txt::TestFontManager>(
+  collection_->SetTestFontManager(sk_make_sp<txt::TestFontManager>(
       std::move(asset_data_provider), GetTestFontFamilyName()));
+
+  collection_->DisableFontFallback();
 }
 
 }  // namespace blink

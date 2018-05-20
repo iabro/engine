@@ -25,8 +25,7 @@ class AndroidExternalTextureGL : public flow::Texture {
 
   virtual void OnGrContextDestroyed() override;
 
-  // Called on GPU thread.
-  void MarkNewFrameAvailable();
+  void MarkNewFrameAvailable() override;
 
  private:
   void Attach(jint textureName);
@@ -34,6 +33,8 @@ class AndroidExternalTextureGL : public flow::Texture {
   void Update();
 
   void Detach();
+
+  void UpdateTransform();
 
   enum class AttachmentState { uninitialized, attached, detached };
 
@@ -44,6 +45,8 @@ class AndroidExternalTextureGL : public flow::Texture {
   bool new_frame_ready_ = false;
 
   GLuint texture_name_ = 0;
+
+  SkMatrix transform;
 
   FXL_DISALLOW_COPY_AND_ASSIGN(AndroidExternalTextureGL);
 };

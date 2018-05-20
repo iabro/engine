@@ -9,8 +9,8 @@
 
 #include <vector>
 
+#include "flutter/fml/macros.h"
 #include "flutter/fml/platform/android/scoped_java_ref.h"
-#include "lib/fxl/macros.h"
 
 namespace fml {
 namespace jni {
@@ -35,6 +35,8 @@ ScopedJavaLocalRef<jobjectArray> VectorToStringArray(
 bool HasException(JNIEnv* env);
 
 bool ClearException(JNIEnv* env);
+
+std::string GetJavaExceptionInfo(JNIEnv* env, jthrowable java_throwable);
 
 }  // namespace jni
 }  // namespace fml

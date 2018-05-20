@@ -32,7 +32,7 @@ IMPLEMENT_WRAPPERTYPEINFO(ui, SceneBuilder);
   V(SceneBuilder, pushColorFilter)                  \
   V(SceneBuilder, pushBackdropFilter)               \
   V(SceneBuilder, pushShaderMask)                   \
-  V(SceneBuilder, pushPhysicalModel)                \
+  V(SceneBuilder, pushPhysicalShape)                \
   V(SceneBuilder, pop)                              \
   V(SceneBuilder, addPicture)                       \
   V(SceneBuilder, addTexture)                       \
@@ -100,13 +100,15 @@ void SceneBuilder::pushShaderMask(Shader* shader,
       static_cast<SkBlendMode>(blendMode));
 }
 
-void SceneBuilder::pushPhysicalModel(const RRect& rrect,
+void SceneBuilder::pushPhysicalShape(const CanvasPath* path,
                                      double elevation,
-                                     int color) {
-  layer_builder_->PushPhysicalModel(
-      rrect.sk_rrect,               //
+                                     int color,
+                                     int shadow_color) {
+  layer_builder_->PushPhysicalShape(
+      path->path(),                 //
       elevation,                    //
       static_cast<SkColor>(color),  //
+      static_cast<SkColor>(shadow_color),
       UIDartState::Current()->window()->viewport_metrics().device_pixel_ratio);
 }
 
@@ -118,10 +120,11 @@ void SceneBuilder::addPicture(double dx,
                               double dy,
                               Picture* picture,
                               int hints) {
-  layer_builder_->PushPicture(SkPoint::Make(dx, dy),  //
-                              picture->picture(),     //
-                              !!(hints & 1),          // picture is complex
-                              !!(hints & 2)           // picture will change
+  layer_builder_->PushPicture(
+      SkPoint::Make(dx, dy),                             //
+      UIDartState::CreateGPUObject(picture->picture()),  //
+      !!(hints & 1),                                     // picture is complex
+      !!(hints & 2)                                      // picture will change
   );
 }
 
