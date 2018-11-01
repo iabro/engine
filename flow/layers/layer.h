@@ -8,13 +8,15 @@
 #include <memory>
 #include <vector>
 
+#include "flutter/flow/embedded_views.h"
 #include "flutter/flow/instrumentation.h"
 #include "flutter/flow/raster_cache.h"
 #include "flutter/flow/texture.h"
-#include "flutter/glue/trace_event.h"
-#include "lib/fxl/build_config.h"
-#include "lib/fxl/logging.h"
-#include "lib/fxl/macros.h"
+#include "flutter/fml/build_config.h"
+#include "flutter/fml/compiler_specific.h"
+#include "flutter/fml/logging.h"
+#include "flutter/fml/macros.h"
+#include "flutter/fml/trace_event.h"
 #include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkColor.h"
 #include "third_party/skia/include/core/SkColorFilter.h"
@@ -27,14 +29,30 @@
 #if defined(OS_FUCHSIA)
 
 #include "flutter/flow/scene_update_context.h"  //nogncheck
-#include "lib/ui/scenic/client/resources.h"     //nogncheck
-#include "lib/ui/scenic/client/session.h"       //nogncheck
+#include "lib/ui/scenic/cpp/resources.h"        //nogncheck
+#include "lib/ui/scenic/cpp/session.h"          //nogncheck
 
 #endif  // defined(OS_FUCHSIA)
 
 namespace flow {
 
+// This should be an exact copy of the Clip enum in painting.dart.
+enum Clip { none, hardEdge, antiAlias, antiAliasWithSaveLayer };
+
 class ContainerLayer;
+
+struct PrerollContext {
+  RasterCache* raster_cache;
+  GrContext* gr_context;
+  SkColorSpace* dst_color_space;
+  SkRect child_paint_bounds;
+
+  // The following allows us to paint in the end of subtree preroll
+  const Stopwatch& frame_time;
+  const Stopwatch& engine_time;
+  TextureRegistry& texture_registry;
+  const bool checkerboard_offscreen_layers;
+};
 
 // Represents a single composited layer. Created on the UI thread but then
 // subquently used on the Rasterizer thread.
@@ -43,20 +61,15 @@ class Layer {
   Layer();
   virtual ~Layer();
 
-  struct PrerollContext {
-    RasterCache* raster_cache;
-    GrContext* gr_context;
-    SkColorSpace* dst_color_space;
-    SkRect child_paint_bounds;
-  };
-
   virtual void Preroll(PrerollContext* context, const SkMatrix& matrix);
 
   struct PaintContext {
     SkCanvas& canvas;
+    ExternalViewEmbedder* view_embedder;
     const Stopwatch& frame_time;
     const Stopwatch& engine_time;
     TextureRegistry& texture_registry;
+    const RasterCache* raster_cache;
     const bool checkerboard_offscreen_layers;
   };
 
@@ -64,6 +77,18 @@ class Layer {
   // draws a checkerboard over the layer if that is enabled in the PaintContext.
   class AutoSaveLayer {
    public:
+    FML_WARN_UNUSED_RESULT static AutoSaveLayer Create(
+        const PaintContext& paint_context,
+        const SkRect& bounds,
+        const SkPaint* paint);
+
+    FML_WARN_UNUSED_RESULT static AutoSaveLayer Create(
+        const PaintContext& paint_context,
+        const SkCanvas::SaveLayerRec& layer_rec);
+
+    ~AutoSaveLayer();
+
+   private:
     AutoSaveLayer(const PaintContext& paint_context,
                   const SkRect& bounds,
                   const SkPaint* paint);
@@ -71,9 +96,6 @@ class Layer {
     AutoSaveLayer(const PaintContext& paint_context,
                   const SkCanvas::SaveLayerRec& layer_rec);
 
-    ~AutoSaveLayer();
-
-   private:
     const PaintContext& paint_context_;
     const SkRect bounds_;
   };
@@ -109,7 +131,7 @@ class Layer {
   bool needs_system_composite_;
   SkRect paint_bounds_;
 
-  FXL_DISALLOW_COPY_AND_ASSIGN(Layer);
+  FML_DISALLOW_COPY_AND_ASSIGN(Layer);
 };
 
 }  // namespace flow

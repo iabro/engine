@@ -6,12 +6,12 @@
 #define FLUTTER_LIB_UI_TEXT_PARAGRAPH_H_
 
 #include "flutter/fml/message_loop.h"
+#include "flutter/lib/ui/dart_wrapper.h"
 #include "flutter/lib/ui/painting/canvas.h"
 #include "flutter/lib/ui/text/paragraph_impl.h"
 #include "flutter/lib/ui/text/paragraph_impl_txt.h"
 #include "flutter/lib/ui/text/text_box.h"
 #include "flutter/third_party/txt/src/txt/paragraph.h"
-#include "lib/tonic/dart_wrappable.h"
 
 namespace tonic {
 class DartLibraryNatives;
@@ -19,15 +19,14 @@ class DartLibraryNatives;
 
 namespace blink {
 
-class Paragraph : public fxl::RefCountedThreadSafe<Paragraph>,
-                  public tonic::DartWrappable {
+class Paragraph : public RefCountedDartWrappable<Paragraph> {
   DEFINE_WRAPPERTYPEINFO();
-  FRIEND_MAKE_REF_COUNTED(Paragraph);
+  FML_FRIEND_MAKE_REF_COUNTED(Paragraph);
 
  public:
-  static fxl::RefPtr<Paragraph> Create(
+  static fml::RefPtr<Paragraph> Create(
       std::unique_ptr<txt::Paragraph> paragraph) {
-    return fxl::MakeRefCounted<Paragraph>(std::move(paragraph));
+    return fml::MakeRefCounted<Paragraph>(std::move(paragraph));
   }
 
   ~Paragraph() override;
@@ -43,7 +42,10 @@ class Paragraph : public fxl::RefCountedThreadSafe<Paragraph>,
   void layout(double width);
   void paint(Canvas* canvas, double x, double y);
 
-  std::vector<TextBox> getRectsForRange(unsigned start, unsigned end);
+  std::vector<TextBox> getRectsForRange(unsigned start,
+                                        unsigned end,
+                                        unsigned boxHeightStyle,
+                                        unsigned boxWidthStyle);
   Dart_Handle getPositionForOffset(double dx, double dy);
   Dart_Handle getWordBoundary(unsigned offset);
 

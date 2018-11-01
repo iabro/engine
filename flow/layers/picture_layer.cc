@@ -4,7 +4,7 @@
 
 #include "flutter/flow/layers/picture_layer.h"
 
-#include "lib/fxl/logging.h"
+#include "flutter/fml/logging.h"
 
 namespace flow {
 
@@ -16,11 +16,13 @@ void PictureLayer::Preroll(PrerollContext* context, const SkMatrix& matrix) {
   SkPicture* sk_picture = picture();
 
   if (auto cache = context->raster_cache) {
-    raster_cache_result_ = cache->GetPrerolledImage(
-        context->gr_context, sk_picture, matrix, context->dst_color_space,
-        is_complex_, will_change_);
-  } else {
-    raster_cache_result_ = RasterCacheResult();
+    SkMatrix ctm = matrix;
+    ctm.postTranslate(offset_.x(), offset_.y());
+#ifndef SUPPORT_FRACTIONAL_TRANSLATION
+    ctm = RasterCache::GetIntegralTransCTM(ctm);
+#endif
+    cache->Prepare(context->gr_context, sk_picture, ctm,
+                   context->dst_color_space, is_complex_, will_change_);
   }
 
   SkRect bounds = sk_picture->cullRect().makeOffset(offset_.x(), offset_.y());
@@ -29,25 +31,25 @@ void PictureLayer::Preroll(PrerollContext* context, const SkMatrix& matrix) {
 
 void PictureLayer::Paint(PaintContext& context) const {
   TRACE_EVENT0("flutter", "PictureLayer::Paint");
-  FXL_DCHECK(picture_.get());
-  FXL_DCHECK(needs_painting());
+  FML_DCHECK(picture_.get());
+  FML_DCHECK(needs_painting());
 
   SkAutoCanvasRestore save(&context.canvas, true);
   context.canvas.translate(offset_.x(), offset_.y());
+#ifndef SUPPORT_FRACTIONAL_TRANSLATION
+  context.canvas.setMatrix(
+      RasterCache::GetIntegralTransCTM(context.canvas.getTotalMatrix()));
+#endif
 
-  if (raster_cache_result_.is_valid()) {
-    SkPaint paint;
-    paint.setFilterQuality(kLow_SkFilterQuality);
-    context.canvas.drawImageRect(
-        raster_cache_result_.image(),             // image
-        raster_cache_result_.source_rect(),       // source
-        raster_cache_result_.destination_rect(),  // destination
-        &paint,                                   // paint
-        SkCanvas::kStrict_SrcRectConstraint       // source constraint
-    );
-  } else {
-    context.canvas.drawPicture(picture());
+  if (context.raster_cache) {
+    const SkMatrix& ctm = context.canvas.getTotalMatrix();
+    RasterCacheResult result = context.raster_cache->Get(*picture(), ctm);
+    if (result.is_valid()) {
+      result.draw(context.canvas);
+      return;
+    }
   }
+  context.canvas.drawPicture(picture());
 }
 
 }  // namespace flow

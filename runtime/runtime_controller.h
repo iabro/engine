@@ -6,14 +6,18 @@
 #define FLUTTER_RUNTIME_RUNTIME_CONTROLLER_H_
 
 #include <memory>
+#include <vector>
 
 #include "flutter/common/task_runners.h"
 #include "flutter/flow/layers/layer_tree.h"
+#include "flutter/fml/macros.h"
+#include "flutter/lib/ui/text/font_collection.h"
 #include "flutter/lib/ui/ui_dart_state.h"
 #include "flutter/lib/ui/window/pointer_data_packet.h"
 #include "flutter/lib/ui/window/window.h"
 #include "flutter/runtime/dart_vm.h"
-#include "lib/fxl/macros.h"
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
 
 namespace blink {
 class Scene;
@@ -24,11 +28,15 @@ class Window;
 class RuntimeController final : public WindowClient {
  public:
   RuntimeController(RuntimeDelegate& client,
-                    const DartVM* vm,
-                    fxl::RefPtr<DartSnapshot> isolate_snapshot,
+                    DartVM* vm,
+                    fml::RefPtr<DartSnapshot> isolate_snapshot,
+                    fml::RefPtr<DartSnapshot> shared_snapshot,
                     TaskRunners task_runners,
+                    fml::WeakPtr<SnapshotDelegate> snapshot_delegate,
                     fml::WeakPtr<GrContext> resource_context,
-                    fxl::RefPtr<flow::SkiaUnrefQueue> unref_queue);
+                    fml::RefPtr<flow::SkiaUnrefQueue> unref_queue,
+                    std::string advisory_script_uri,
+                    std::string advisory_script_entrypoint);
 
   ~RuntimeController();
 
@@ -36,20 +44,21 @@ class RuntimeController final : public WindowClient {
 
   bool SetViewportMetrics(const ViewportMetrics& metrics);
 
-  bool SetLocale(const std::string& language_code,
-                 const std::string& country_code);
+  bool SetLocales(const std::vector<std::string>& locale_data);
 
   bool SetUserSettingsData(const std::string& data);
 
   bool SetSemanticsEnabled(bool enabled);
 
-  bool BeginFrame(fxl::TimePoint frame_time);
+  bool SetAccessibilityFeatures(int32_t flags);
+
+  bool BeginFrame(fml::TimePoint frame_time);
 
   bool NotifyIdle(int64_t deadline);
 
   bool IsRootIsolateRunning() const;
 
-  bool DispatchPlatformMessage(fxl::RefPtr<PlatformMessage> message);
+  bool DispatchPlatformMessage(fml::RefPtr<PlatformMessage> message);
 
   bool DispatchPointerDataPacket(const PointerDataPacket& packet);
 
@@ -65,35 +74,64 @@ class RuntimeController final : public WindowClient {
 
   tonic::DartErrorHandleType GetLastError();
 
-  fml::WeakPtr<DartIsolate> GetRootIsolate();
+  std::weak_ptr<DartIsolate> GetRootIsolate();
 
   std::pair<bool, uint32_t> GetRootIsolateReturnCode();
 
  private:
+  struct Locale {
+    Locale(std::string language_code_,
+           std::string country_code_,
+           std::string script_code_,
+           std::string variant_code_)
+        : language_code(language_code_),
+          country_code(country_code_),
+          script_code(script_code_),
+          variant_code(variant_code_) {}
+
+    std::string language_code;
+    std::string country_code;
+    std::string script_code;
+    std::string variant_code;
+  };
+
   struct WindowData {
     ViewportMetrics viewport_metrics;
     std::string language_code;
     std::string country_code;
+    std::string script_code;
+    std::string variant_code;
+    std::vector<std::string> locale_data;
     std::string user_settings_data = "{}";
     bool semantics_enabled = false;
+    bool assistive_technology_enabled = false;
+    int32_t accessibility_feature_flags_ = 0;
   };
 
   RuntimeDelegate& client_;
-  const DartVM* vm_;
-  fxl::RefPtr<DartSnapshot> isolate_snapshot_;
+  DartVM* const vm_;
+  fml::RefPtr<DartSnapshot> isolate_snapshot_;
+  fml::RefPtr<DartSnapshot> shared_snapshot_;
   TaskRunners task_runners_;
+  fml::WeakPtr<SnapshotDelegate> snapshot_delegate_;
   fml::WeakPtr<GrContext> resource_context_;
-  fxl::RefPtr<flow::SkiaUnrefQueue> unref_queue_;
+  fml::RefPtr<flow::SkiaUnrefQueue> unref_queue_;
+  std::string advisory_script_uri_;
+  std::string advisory_script_entrypoint_;
   WindowData window_data_;
-  fml::WeakPtr<DartIsolate> root_isolate_;
+  std::weak_ptr<DartIsolate> root_isolate_;
   std::pair<bool, uint32_t> root_isolate_return_code_ = {false, 0};
 
   RuntimeController(RuntimeDelegate& client,
-                    const DartVM* vm,
-                    fxl::RefPtr<DartSnapshot> isolate_snapshot,
+                    DartVM* vm,
+                    fml::RefPtr<DartSnapshot> isolate_snapshot,
+                    fml::RefPtr<DartSnapshot> shared_snapshot,
                     TaskRunners task_runners,
+                    fml::WeakPtr<SnapshotDelegate> snapshot_delegate,
                     fml::WeakPtr<GrContext> resource_context,
-                    fxl::RefPtr<flow::SkiaUnrefQueue> unref_queue,
+                    fml::RefPtr<flow::SkiaUnrefQueue> unref_queue,
+                    std::string advisory_script_uri,
+                    std::string advisory_script_entrypoint,
                     WindowData data);
 
   Window* GetWindowIfAvailable();
@@ -113,9 +151,15 @@ class RuntimeController final : public WindowClient {
   void UpdateSemantics(SemanticsUpdate* update) override;
 
   // |blink::WindowClient|
-  void HandlePlatformMessage(fxl::RefPtr<PlatformMessage> message) override;
+  void HandlePlatformMessage(fml::RefPtr<PlatformMessage> message) override;
 
-  FXL_DISALLOW_COPY_AND_ASSIGN(RuntimeController);
+  // |blink::WindowClient|
+  void SetIsolateDebugName(const std::string name) override;
+
+  // |blink::WindowClient|
+  FontCollection& GetFontCollection() override;
+
+  FML_DISALLOW_COPY_AND_ASSIGN(RuntimeController);
 };
 
 }  // namespace blink

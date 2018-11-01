@@ -5,25 +5,25 @@
 part of dart.ui;
 
 /// Signature of callbacks that have no arguments and return no data.
-typedef void VoidCallback();
+typedef VoidCallback = void Function();
 
 /// Signature for [Window.onBeginFrame].
-typedef void FrameCallback(Duration duration);
+typedef FrameCallback = void Function(Duration duration);
 
 /// Signature for [Window.onPointerDataPacket].
-typedef void PointerDataPacketCallback(PointerDataPacket packet);
+typedef PointerDataPacketCallback = void Function(PointerDataPacket packet);
 
 /// Signature for [Window.onSemanticsAction].
-typedef void SemanticsActionCallback(int id, SemanticsAction action, ByteData args);
+typedef SemanticsActionCallback = void Function(int id, SemanticsAction action, ByteData args);
 
 /// Signature for responses to platform messages.
 ///
 /// Used as a parameter to [Window.sendPlatformMessage] and
 /// [Window.onPlatformMessage].
-typedef void PlatformMessageResponseCallback(ByteData data);
+typedef PlatformMessageResponseCallback = void Function(ByteData data);
 
 /// Signature for [Window.onPlatformMessage].
-typedef void PlatformMessageCallback(String name, ByteData data, PlatformMessageResponseCallback callback);
+typedef PlatformMessageCallback = void Function(String name, ByteData data, PlatformMessageResponseCallback callback);
 
 /// States that an application can be in.
 ///
@@ -53,7 +53,7 @@ enum AppLifecycleState {
   /// in the foreground inactive state.  Apps transition to this state when
   /// another activity is focused, such as a split-screen app, a phone call,
   /// a picture-in-picture app, a system dialog, or another window.
-  /// 
+  ///
   /// Apps in this state should assume that they may be [paused] at any time.
   inactive,
 
@@ -79,7 +79,7 @@ enum AppLifecycleState {
 /// A representation of distances for each of the four edges of a rectangle,
 /// used to encode the view insets and padding that applications should place
 /// around their user interface, as exposed by [Window.viewInsets] and
-/// [Window.padding]. View insets and padding are preferrably read via
+/// [Window.padding]. View insets and padding are preferably read via
 /// [MediaQuery.of].
 ///
 /// For a generic class that represents distances around a rectangle, see the
@@ -109,11 +109,18 @@ class WindowPadding {
 
   /// A window padding that has zeros for each edge.
   static const WindowPadding zero = const WindowPadding._(left: 0.0, top: 0.0, right: 0.0, bottom: 0.0);
+
+  @override
+  String toString() {
+    return '$runtimeType(left: $left, top: $top, right: $right, bottom: $bottom)';
+  }
 }
 
-/// An identifier used to select a user's language and formatting preferences,
-/// consisting of a language and a country. This is a subset of locale
-/// identifiers as defined by BCP 47.
+/// An identifier used to select a user's language and formatting preferences.
+///
+/// This represents a [Unicode Language
+/// Identifier](https://www.unicode.org/reports/tr35/#Unicode_language_identifier)
+/// (i.e. without Locale extensions), except variants are not supported.
 ///
 /// Locales are canonicalized according to the "preferred value" entries in the
 /// [IANA Language Subtag
@@ -140,16 +147,57 @@ class Locale {
   /// The primary language subtag must not be null. The region subtag is
   /// optional.
   ///
-  /// The values are _case sensitive_, and should match the case of the relevant
-  /// subtags in the [IANA Language Subtag
-  /// Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry).
-  /// Typically this means the primary language subtag should be lowercase and
-  /// the region subtag should be uppercase.
-  const Locale(this._languageCode, [ this._countryCode ]) : assert(_languageCode != null);
+  /// The subtag values are _case sensitive_ and must be one of the valid
+  /// subtags according to CLDR supplemental data:
+  /// [language](http://unicode.org/cldr/latest/common/validity/language.xml),
+  /// [region](http://unicode.org/cldr/latest/common/validity/region.xml). The
+  /// primary language subtag must be at least two and at most eight lowercase
+  /// letters, but not four letters. The region region subtag must be two
+  /// uppercase letters or three digits. See the [Unicode Language
+  /// Identifier](https://www.unicode.org/reports/tr35/#Unicode_language_identifier)
+  /// specification.
+  ///
+  /// Validity is not checked by default, but some methods may throw away
+  /// invalid data.
+  ///
+  /// See also:
+  ///
+  ///  * [new Locale.fromSubtags], which also allows a [scriptCode] to be
+  ///    specified.
+  const Locale(
+    this._languageCode, [
+    this._countryCode,
+  ]) : assert(_languageCode != null),
+       assert(_languageCode != ''),
+       scriptCode = null;
+
+  /// Creates a new Locale object.
+  ///
+  /// The keyword arguments specify the subtags of the Locale.
+  ///
+  /// The subtag values are _case sensitive_ and must be valid subtags according
+  /// to CLDR supplemental data:
+  /// [language](http://unicode.org/cldr/latest/common/validity/language.xml),
+  /// [script](http://unicode.org/cldr/latest/common/validity/script.xml) and
+  /// [region](http://unicode.org/cldr/latest/common/validity/region.xml) for
+  /// each of languageCode, scriptCode and countryCode respectively.
+  ///
+  /// Validity is not checked by default, but some methods may throw away
+  /// invalid data.
+  const Locale.fromSubtags({
+    String languageCode = 'und',
+    this.scriptCode,
+    String countryCode,
+  }) : assert(languageCode != null),
+       assert(languageCode != ''),
+       _languageCode = languageCode,
+       assert(scriptCode != ''),
+       assert(countryCode != ''),
+       _countryCode = countryCode;
 
   /// The primary language subtag for the locale.
   ///
-  /// This must not be null.
+  /// This must not be null. It may be 'und', representing 'undefined'.
   ///
   /// This is expected to be string registered in the [IANA Language Subtag
   /// Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry)
@@ -161,12 +209,21 @@ class Locale {
   /// Locale('he')` and `const Locale('iw')` are equal, and both have the
   /// [languageCode] `he`, because `iw` is a deprecated language subtag that was
   /// replaced by the subtag `he`.
-  String get languageCode => _canonicalizeLanguageCode(_languageCode);
+  ///
+  /// This must be a valid Unicode Language subtag as listed in [Unicode CLDR
+  /// supplemental
+  /// data](http://unicode.org/cldr/latest/common/validity/language.xml).
+  ///
+  /// See also:
+  ///
+  ///  * [new Locale.fromSubtags], which describes the conventions for creating
+  ///    [Locale] objects.
+  String get languageCode => _replaceDeprecatedLanguageSubtag(_languageCode);
   final String _languageCode;
 
-  static String _canonicalizeLanguageCode(String languageCode) {
+  static String _replaceDeprecatedLanguageSubtag(String languageCode) {
     // This switch statement is generated by //flutter/tools/gen_locale.dart
-    // Mappings generated for language subtag registry as of 2017-08-15.
+    // Mappings generated for language subtag registry as of 2018-08-08.
     switch (languageCode) {
       case 'in': return 'id'; // Indonesian; deprecated 1989-01-01
       case 'iw': return 'he'; // Hebrew; deprecated 1989-01-01
@@ -213,6 +270,7 @@ class Locale {
       case 'mwj': return 'vaj'; // Maligo; deprecated 2015-02-12
       case 'myt': return 'mry'; // Sangab Mandaya; deprecated 2010-03-11
       case 'nad': return 'xny'; // Nijadali; deprecated 2016-05-30
+      case 'ncp': return 'kdz'; // Ndaktup; deprecated 2018-03-08
       case 'nnx': return 'ngv'; // Ngong; deprecated 2015-02-12
       case 'nts': return 'pij'; // Natagaimas; deprecated 2016-05-30
       case 'oun': return 'vaj'; // !O!ung; deprecated 2015-02-12
@@ -249,9 +307,23 @@ class Locale {
     }
   }
 
+  /// The script subtag for the locale.
+  ///
+  /// This may be null, indicating that there is no specified script subtag.
+  ///
+  /// This must be a valid Unicode Language Identifier script subtag as listed
+  /// in [Unicode CLDR supplemental
+  /// data](http://unicode.org/cldr/latest/common/validity/script.xml).
+  ///
+  /// See also:
+  ///
+  ///  * [new Locale.fromSubtags], which describes the conventions for creating
+  ///    [Locale] objects.
+  final String scriptCode;
+
   /// The region subtag for the locale.
   ///
-  /// This can be null.
+  /// This may be null, indicating that there is no specified region subtag.
   ///
   /// This is expected to be string registered in the [IANA Language Subtag
   /// Registry](https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry)
@@ -263,12 +335,17 @@ class Locale {
   /// 'DE')` and `const Locale('de', 'DD')` are equal, and both have the
   /// [countryCode] `DE`, because `DD` is a deprecated language subtag that was
   /// replaced by the subtag `DE`.
-  String get countryCode => _canonicalizeRegionCode(_countryCode);
+  ///
+  /// See also:
+  ///
+  ///  * [new Locale.fromSubtags], which describes the conventions for creating
+  ///    [Locale] objects.
+  String get countryCode => _replaceDeprecatedRegionSubtag(_countryCode);
   final String _countryCode;
 
-  static String _canonicalizeRegionCode(String regionCode) {
+  static String _replaceDeprecatedRegionSubtag(String regionCode) {
     // This switch statement is generated by //flutter/tools/gen_locale.dart
-    // Mappings generated for language subtag registry as of 2017-08-15.
+    // Mappings generated for language subtag registry as of 2018-08-08.
     switch (regionCode) {
       case 'BU': return 'MM'; // Burma; deprecated 1989-12-05
       case 'DD': return 'DE'; // German Democratic Republic; deprecated 1990-10-30
@@ -288,23 +365,21 @@ class Locale {
       return false;
     final Locale typedOther = other;
     return languageCode == typedOther.languageCode
+        && scriptCode == typedOther.scriptCode
         && countryCode == typedOther.countryCode;
   }
 
   @override
-  int get hashCode {
-    int result = 373;
-    result = 37 * result + languageCode.hashCode;
-    if (_countryCode != null)
-      result = 37 * result + countryCode.hashCode;
-    return result;
-  }
+  int get hashCode => hashValues(languageCode, scriptCode, countryCode);
 
   @override
   String toString() {
-    if (_countryCode == null)
-      return languageCode;
-    return '${languageCode}_$countryCode';
+    final StringBuffer out = StringBuffer(languageCode);
+    if (scriptCode != null)
+      out.write('_$scriptCode');
+    if (_countryCode != null)
+      out.write('_$countryCode');
+    return out.toString();
   }
 }
 
@@ -420,10 +495,30 @@ class Window {
     _onMetricsChangedZone = Zone.current;
   }
 
-  /// The system-reported locale.
+  /// The system-reported default locale of the device.
   ///
   /// This establishes the language and formatting conventions that application
   /// should, if possible, use to render their user interface.
+  ///
+  /// This is the first locale selected by the user and is the user's
+  /// primary locale (the locale the device UI is displayed in)
+  ///
+  /// This is equivalent to `locales.first` and will provide an empty non-null locale
+  /// if the [locales] list has not been set or is empty.
+  Locale get locale {
+    if (_locales != null && _locales.isNotEmpty) {
+      return _locales.first;
+    }
+    return null;
+  }
+
+  /// The full system-reported supported locales of the device.
+  ///
+  /// This establishes the language and formatting conventions that application
+  /// should, if possible, use to render their user interface.
+  ///
+  /// The list is ordered in order of priority, with lower-indexed locales being
+  /// preferred over higher-indexed ones. The first element is the primary [locale].
   ///
   /// The [onLocaleChanged] callback is called whenever this value changes.
   ///
@@ -431,8 +526,8 @@ class Window {
   ///
   ///  * [WidgetsBindingObserver], for a mechanism at the widgets layer to
   ///    observe when this value changes.
-  Locale get locale => _locale;
-  Locale _locale;
+  List<Locale> get locales => _locales;
+  List<Locale> _locales;
 
   /// A callback that is invoked whenever [locale] changes value.
   ///
@@ -660,6 +755,22 @@ class Window {
     _onSemanticsActionZone = Zone.current;
   }
 
+  /// Additional accessibility features that may be enabled by the platform.
+  AccessibilityFeatures get accessibilityFeatures => _accessibilityFeatures;
+  AccessibilityFeatures _accessibilityFeatures;
+
+  /// A callback that is invoked when the value of [accessibilityFlags] changes.
+  ///
+  /// The framework invokes this callback in the same zone in which the
+  /// callback was set.
+  VoidCallback get onAccessibilityFeaturesChanged => _onAccessibilityFeaturesChanged;
+  VoidCallback _onAccessibilityFeaturesChanged;
+  Zone _onAccessibilityFlagsChangedZone;
+  set onAccessibilityFeaturesChanged(VoidCallback callback) {
+    _onAccessibilityFeaturesChanged = callback;
+    _onAccessibilityFlagsChangedZone = Zone.current;
+  }
+
   /// Change the retained semantics data about this window.
   ///
   /// If [semanticsEnabled] is true, the user has requested that this funciton
@@ -668,6 +779,16 @@ class Window {
   /// In either case, this function disposes the given update, which means the
   /// semantics update cannot be used further.
   void updateSemantics(SemanticsUpdate update) native 'Window_updateSemantics';
+
+  /// Set the debug name associated with this window's root isolate.
+  ///
+  /// Normally debug names are automatically generated from the Dart port, entry
+  /// point, and source file. For example: `main.dart$main-1234`.
+  ///
+  /// This can be combined with flutter tools `--isolate-filter` flag to debug
+  /// specific root isolates. For example: `flutter attach --isolate-filter=[name]`.
+  /// Note that this does not rename any child isolates of the root.
+  void setIsolateDebugName(String name) native 'Window_setIsolateDebugName';
 
   /// Sends a message to a platform-specific plugin.
   ///
@@ -728,6 +849,74 @@ class Window {
       registrationZone.runUnaryGuarded(callback, data);
     };
   }
+}
+
+/// Additional accessibility features that may be enabled by the platform.
+///
+/// It is not possible to enable these settings from Flutter, instead they are
+/// used by the platform to indicate that additional accessibility features are
+/// enabled.
+class AccessibilityFeatures {
+  const AccessibilityFeatures._(this._index);
+
+  static const int _kAccessibleNavigation = 1 << 0;
+  static const int _kInvertColorsIndex = 1 << 1;
+  static const int _kDisableAnimationsIndex = 1 << 2;
+  static const int _kBoldTextIndex = 1 << 3;
+  static const int _kReduceMotionIndex = 1 << 4;
+
+  // A bitfield which represents each enabled feature.
+  final int _index;
+
+  /// Whether there is a running accessibility service which is changing the
+  /// interaction model of the device.
+  ///
+  /// For example, TalkBack on Android and VoiceOver on iOS enable this flag.
+  bool get accessibleNavigation => _kAccessibleNavigation & _index != 0;
+
+  /// The platform is inverting the colors of the application.
+  bool get invertColors => _kInvertColorsIndex & _index != 0;
+
+  /// The platform is requesting that animations be disabled or simplified.
+  bool get disableAnimations => _kDisableAnimationsIndex & _index != 0;
+
+  /// The platform is requesting that text be rendered at a bold font weight.
+  ///
+  /// Only supported on iOS.
+  bool get boldText => _kBoldTextIndex & _index != 0;
+
+  /// The platform is requesting that certain animations be simplified and
+  /// parallax effects removed.
+  ///
+  /// Only supported on iOS.
+  bool get reduceMotion => _kReduceMotionIndex & _index != 0;
+
+  @override
+  String toString() {
+    final List<String> features = <String>[];
+    if (accessibleNavigation)
+      features.add('accessibleNavigation');
+    if (invertColors)
+      features.add('invertColors');
+    if (disableAnimations)
+      features.add('disableAnimations');
+    if (boldText)
+      features.add('boldText');
+    if (reduceMotion)
+      features.add('reduceMotion');
+    return 'AccessibilityFeatures$features';
+  }
+
+  @override
+  bool operator ==(dynamic other) {
+    if (other.runtimeType != runtimeType)
+      return false;
+    final AccessibilityFeatures typedOther = other;
+    return _index == typedOther._index;
+  }
+
+  @override
+  int get hashCode => _index.hashCode;
 }
 
 /// The [Window] singleton. This object exposes the size of the display, the

@@ -8,11 +8,20 @@
 #import <Foundation/Foundation.h>
 
 typedef NS_ENUM(NSInteger, FlutterTextInputAction) {
+  FlutterTextInputActionUnspecified,
   FlutterTextInputActionDone,
+  FlutterTextInputActionGo,
+  FlutterTextInputActionSend,
+  FlutterTextInputActionSearch,
+  FlutterTextInputActionNext,
+  FlutterTextInputActionContinue,
+  FlutterTextInputActionJoin,
+  FlutterTextInputActionRoute,
+  FlutterTextInputActionEmergencyCall,
   FlutterTextInputActionNewline,
 };
 
-@protocol FlutterTextInputDelegate<NSObject>
+@protocol FlutterTextInputDelegate <NSObject>
 
 - (void)updateEditingClient:(int)client withState:(NSDictionary*)state;
 - (void)performAction:(FlutterTextInputAction)action withClient:(int)client;

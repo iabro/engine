@@ -5,17 +5,19 @@
 #ifndef FLUTTER_SHELL_PLATFORM_DARWIN_IOS_IOS_SURFACE_H_
 #define FLUTTER_SHELL_PLATFORM_DARWIN_IOS_IOS_SURFACE_H_
 
+#import "flutter/shell/platform/darwin/ios/framework/Source/FlutterPlatformViews_Internal.h"
+
 #include <memory>
 
+#include "flutter/fml/macros.h"
 #include "flutter/fml/platform/darwin/scoped_nsobject.h"
 #include "flutter/shell/common/surface.h"
-#include "lib/fxl/macros.h"
 
 namespace shell {
 
 class IOSSurface {
  public:
-  IOSSurface();
+  IOSSurface(FlutterPlatformViewsController& platform_views_controller);
 
   virtual ~IOSSurface();
 
@@ -27,8 +29,14 @@ class IOSSurface {
 
   virtual std::unique_ptr<Surface> CreateGPUSurface() = 0;
 
+ protected:
+  FlutterPlatformViewsController& GetPlatformViewsController();
+
+ private:
+  FlutterPlatformViewsController& platform_views_controller_;
+
  public:
-  FXL_DISALLOW_COPY_AND_ASSIGN(IOSSurface);
+  FML_DISALLOW_COPY_AND_ASSIGN(IOSSurface);
 };
 
 }  // namespace shell

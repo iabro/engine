@@ -8,15 +8,16 @@
 
 #include <memory>
 
+#include "flutter/fml/logging.h"
 #include "flutter/fml/platform/darwin/cf_utils.h"
 #include "flutter/fml/trace_event.h"
-#include "lib/fxl/logging.h"
 #include "third_party/skia/include/utils/mac/SkCGUtils.h"
 
 namespace shell {
 
-IOSSurfaceSoftware::IOSSurfaceSoftware(fml::scoped_nsobject<CALayer> layer)
-    : layer_(std::move(layer)) {
+IOSSurfaceSoftware::IOSSurfaceSoftware(fml::scoped_nsobject<CALayer> layer,
+                                       FlutterPlatformViewsController& platform_views_controller)
+    : IOSSurface(platform_views_controller), layer_(std::move(layer)) {
   UpdateStorageSizeIfNecessary();
 }
 
@@ -122,7 +123,17 @@ bool IOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
 
   layer_.get().contents = reinterpret_cast<id>(static_cast<CGImageRef>(pixmap_image));
 
+  GetPlatformViewsController().Present();
+
   return true;
+}
+
+flow::ExternalViewEmbedder* IOSSurfaceSoftware::GetExternalViewEmbedder() {
+  return this;
+}
+void IOSSurfaceSoftware::CompositeEmbeddedView(int view_id,
+                                               const flow::EmbeddedViewParams& params) {
+  GetPlatformViewsController().CompositeEmbeddedView(view_id, params);
 }
 
 }  // namespace shell

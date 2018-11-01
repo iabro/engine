@@ -6,12 +6,12 @@
 
 #include "flutter/common/settings.h"
 #include "flutter/common/task_runners.h"
-#include "lib/fxl/logging.h"
-#include "lib/fxl/tasks/task_runner.h"
-#include "lib/tonic/converter/dart_converter.h"
-#include "lib/tonic/dart_args.h"
-#include "lib/tonic/dart_binding_macros.h"
-#include "lib/tonic/dart_library_natives.h"
+#include "flutter/fml/logging.h"
+#include "flutter/fml/task_runner.h"
+#include "third_party/tonic/converter/dart_converter.h"
+#include "third_party/tonic/dart_args.h"
+#include "third_party/tonic/dart_binding_macros.h"
+#include "third_party/tonic/dart_library_natives.h"
 
 using tonic::ToDart;
 
@@ -84,8 +84,13 @@ void Paragraph::paint(Canvas* canvas, double x, double y) {
   m_paragraphImpl->paint(canvas, x, y);
 }
 
-std::vector<TextBox> Paragraph::getRectsForRange(unsigned start, unsigned end) {
-  return m_paragraphImpl->getRectsForRange(start, end);
+std::vector<TextBox> Paragraph::getRectsForRange(unsigned start,
+                                                 unsigned end,
+                                                 unsigned boxHeightStyle,
+                                                 unsigned boxWidthStyle) {
+  return m_paragraphImpl->getRectsForRange(
+      start, end, static_cast<txt::Paragraph::RectHeightStyle>(boxHeightStyle),
+      static_cast<txt::Paragraph::RectWidthStyle>(boxWidthStyle));
 }
 
 Dart_Handle Paragraph::getPositionForOffset(double dx, double dy) {

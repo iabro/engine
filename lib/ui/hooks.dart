@@ -12,6 +12,7 @@ dynamic _decodeJSON(String message) {
   return message != null ? json.decode(message) : null;
 }
 
+@pragma('vm:entry-point')
 void _updateWindowMetrics(double devicePixelRatio,
                           double width,
                           double height,
@@ -39,17 +40,26 @@ void _updateWindowMetrics(double devicePixelRatio,
   _invoke(window.onMetricsChanged, window._onMetricsChangedZone);
 }
 
-typedef String _LocaleClosure();
+typedef _LocaleClosure = String Function();
 
-String _localeClosure() => window._locale.toString();
+String _localeClosure() => window.locale.toString();
 
+@pragma('vm:entry-point')
 _LocaleClosure _getLocaleClosure() => _localeClosure;
 
-void _updateLocale(String languageCode, String countryCode) {
-  window._locale = new Locale(languageCode, countryCode);
+@pragma('vm:entry-point')
+void _updateLocales(List<String> locales) {
+  const int stringsPerLocale = 4;
+  final int numLocales = locales.length ~/ stringsPerLocale;
+  window._locales = new List<Locale>(numLocales);
+  for (int localeIndex = 0; localeIndex < numLocales; localeIndex++) {
+    window._locales[localeIndex] = new Locale(locales[localeIndex * stringsPerLocale],
+                                   locales[localeIndex * stringsPerLocale + 1]);
+  }
   _invoke(window.onLocaleChanged, window._onLocaleChangedZone);
 }
 
+@pragma('vm:entry-point')
 void _updateUserSettingsData(String jsonData) {
   final Map<String, dynamic> data = json.decode(jsonData);
   _updateTextScaleFactor(data['textScaleFactor'].toDouble());
@@ -65,11 +75,22 @@ void _updateAlwaysUse24HourFormat(bool alwaysUse24HourFormat) {
   window._alwaysUse24HourFormat = alwaysUse24HourFormat;
 }
 
+@pragma('vm:entry-point')
 void _updateSemanticsEnabled(bool enabled) {
   window._semanticsEnabled = enabled;
   _invoke(window.onSemanticsEnabledChanged, window._onSemanticsEnabledChangedZone);
 }
 
+@pragma('vm:entry-point')
+void _updateAccessibilityFeatures(int values) {
+  final AccessibilityFeatures newFeatures = new AccessibilityFeatures._(values);
+  if (newFeatures == window._accessibilityFeatures)
+    return;
+  window._accessibilityFeatures = newFeatures;
+  _invoke(window.onAccessibilityFeaturesChanged, window._onAccessibilityFlagsChangedZone);
+}
+
+@pragma('vm:entry-point')
 void _dispatchPlatformMessage(String name, ByteData data, int responseId) {
   if (window.onPlatformMessage != null) {
     _invoke3<String, ByteData, PlatformMessageResponseCallback>(
@@ -86,11 +107,13 @@ void _dispatchPlatformMessage(String name, ByteData data, int responseId) {
   }
 }
 
+@pragma('vm:entry-point')
 void _dispatchPointerDataPacket(ByteData packet) {
   if (window.onPointerDataPacket != null)
     _invoke1<PointerDataPacket>(window.onPointerDataPacket, window._onPointerDataPacketZone, _unpackPointerDataPacket(packet));
 }
 
+@pragma('vm:entry-point')
 void _dispatchSemanticsAction(int id, int action, ByteData args) {
   _invoke3<int, SemanticsAction, ByteData>(
     window.onSemanticsAction,
@@ -101,10 +124,12 @@ void _dispatchSemanticsAction(int id, int action, ByteData args) {
   );
 }
 
+@pragma('vm:entry-point')
 void _beginFrame(int microseconds) {
   _invoke1<Duration>(window.onBeginFrame, window._onBeginFrameZone, new Duration(microseconds: microseconds));
 }
 
+@pragma('vm:entry-point')
 void _drawFrame() {
   _invoke(window.onDrawFrame, window._onDrawFrameZone);
 }
@@ -171,7 +196,7 @@ void _invoke3<A1, A2, A3>(void callback(A1 a1, A2 a2, A3 a3), Zone zone, A1 arg1
 //
 //  * pointer_data.cc
 //  * FlutterView.java
-const int _kPointerDataFieldCount = 19;
+const int _kPointerDataFieldCount = 20;
 
 PointerDataPacket _unpackPointerDataPacket(ByteData packet) {
   const int kStride = Int64List.bytesPerElement;
@@ -195,6 +220,7 @@ PointerDataPacket _unpackPointerDataPacket(ByteData packet) {
       pressureMax: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
       distance: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
       distanceMax: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
+      size: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
       radiusMajor: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
       radiusMinor: packet.getFloat64(kStride * offset++, _kFakeHostEndian),
       radiusMin: packet.getFloat64(kStride * offset++, _kFakeHostEndian),

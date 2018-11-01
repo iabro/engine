@@ -589,6 +589,7 @@ class Rect {
   Rect._();
 
   /// Construct a rectangle from its left, top, right, and bottom edges.
+  @pragma('vm:entry-point')
   Rect.fromLTRB(double left, double top, double right, double bottom) {
     _value
       ..[0] = left
@@ -1329,18 +1330,19 @@ class RRect {
 
   /// Whether this rounded rectangle has a side with no straight section.
   bool get isStadium {
-    return (
-      tlRadius == trRadius && trRadius == brRadius && brRadius == blRadius &&
-      (width <= 2.0 * tlRadiusX || height <= 2.0 * tlRadiusY)
-    );
+    return tlRadius == trRadius
+        && trRadius == brRadius
+        && brRadius == blRadius
+        && (width <= 2.0 * tlRadiusX || height <= 2.0 * tlRadiusY);
   }
 
   /// Whether this rounded rectangle has no side with a straight section.
   bool get isEllipse {
-    return (
-      tlRadius == trRadius && trRadius == brRadius && brRadius == blRadius &&
-      width <= 2.0 * tlRadiusX && height <= 2.0 * tlRadiusY
-    );
+    return tlRadius == trRadius
+        && trRadius == brRadius
+        && brRadius == blRadius
+        && width <= 2.0 * tlRadiusX
+        && height <= 2.0 * tlRadiusY;
   }
 
   /// Whether this rounded rectangle would draw as a circle.

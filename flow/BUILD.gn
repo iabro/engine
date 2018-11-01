@@ -8,6 +8,7 @@ source_set("flow") {
     "compositor_context.h",
     "debug_print.cc",
     "debug_print.h",
+    "embedded_views.h",
     "instrumentation.cc",
     "instrumentation.h",
     "layers/backdrop_filter_layer.cc",
@@ -22,12 +23,8 @@ source_set("flow") {
     "layers/color_filter_layer.h",
     "layers/container_layer.cc",
     "layers/container_layer.h",
-    "layers/default_layer_builder.cc",
-    "layers/default_layer_builder.h",
     "layers/layer.cc",
     "layers/layer.h",
-    "layers/layer_builder.cc",
-    "layers/layer_builder.h",
     "layers/layer_tree.cc",
     "layers/layer_tree.h",
     "layers/opacity_layer.cc",
@@ -38,6 +35,8 @@ source_set("flow") {
     "layers/physical_shape_layer.h",
     "layers/picture_layer.cc",
     "layers/picture_layer.h",
+    "layers/platform_view_layer.cc",
+    "layers/platform_view_layer.h",
     "layers/shader_mask_layer.cc",
     "layers/shader_mask_layer.h",
     "layers/texture_layer.cc",
@@ -58,16 +57,13 @@ source_set("flow") {
     "texture.h",
   ]
 
-  public_deps = [
-    "//garnet/public/lib/fxl",
-  ]
-
   public_configs = [ "$flutter_root:config" ]
+
+  public_deps = []
 
   deps = [
     "$flutter_root/common",
     "$flutter_root/fml",
-    "$flutter_root/glue",
     "$flutter_root/synchronization",
     "//third_party/skia",
     "//third_party/skia:gpu",
@@ -84,8 +80,8 @@ source_set("flow") {
     ]
 
     public_deps += [
-      "//garnet/public/lib/ui/scenic:client",
-      "//garnet/public/lib/ui/scenic/fidl",
+      "//garnet/public/fidl/fuchsia.ui.scenic",
+      "//garnet/public/lib/ui/scenic/cpp",
       "//topaz/public/dart-pkg/zircon",
     ]
 

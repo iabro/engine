@@ -10,7 +10,8 @@
 #include <string>
 
 #include "flutter/fml/paths.h"
-#include "lib/fxl/strings/string_view.h"
+#include "flutter/fml/string_view.h"
+#include "flutter/shell/version/version.h"
 
 // Include once for the default enum definition.
 #include "flutter/shell/common/switches.h"
@@ -19,7 +20,7 @@
 
 struct SwitchDesc {
   shell::Switch sw;
-  const fxl::StringView flag;
+  const fml::StringView flag;
   const char* help;
 };
 
@@ -41,6 +42,14 @@ namespace shell {
 
 void PrintUsage(const std::string& executable_name) {
   std::cerr << std::endl << "  " << executable_name << std::endl << std::endl;
+
+  std::cerr << "Versions: " << std::endl << std::endl;
+
+  std::cerr << "Flutter Engine Version: " << GetFlutterEngineVersion()
+            << std::endl;
+  std::cerr << "Skia Version: " << GetSkiaVersion() << std::endl;
+
+  std::cerr << "Dart Version: " << GetDartVersion() << std::endl << std::endl;
 
   std::cerr << "Available Flags:" << std::endl;
 
@@ -83,17 +92,17 @@ void PrintUsage(const std::string& executable_name) {
   std::cerr << std::string(column_width, '-') << std::endl;
 }
 
-const fxl::StringView FlagForSwitch(Switch swtch) {
+const fml::StringView FlagForSwitch(Switch swtch) {
   for (uint32_t i = 0; i < static_cast<uint32_t>(Switch::Sentinel); i++) {
     if (gSwitchDescs[i].sw == swtch) {
       return gSwitchDescs[i].flag;
     }
   }
-  return fxl::StringView();
+  return fml::StringView();
 }
 
 template <typename T>
-static bool GetSwitchValue(const fxl::CommandLine& command_line,
+static bool GetSwitchValue(const fml::CommandLine& command_line,
                            shell::Switch sw,
                            T* result) {
   std::string switch_string;
@@ -112,7 +121,7 @@ static bool GetSwitchValue(const fxl::CommandLine& command_line,
   return false;
 }
 
-blink::Settings SettingsFromCommandLine(const fxl::CommandLine& command_line) {
+blink::Settings SettingsFromCommandLine(const fml::CommandLine& command_line) {
   blink::Settings settings = {};
 
   // Enable Observatory
@@ -123,7 +132,7 @@ blink::Settings SettingsFromCommandLine(const fxl::CommandLine& command_line) {
   if (command_line.HasOption(FlagForSwitch(Switch::DeviceObservatoryPort))) {
     if (!GetSwitchValue(command_line, Switch::DeviceObservatoryPort,
                         &settings.observatory_port)) {
-      FXL_LOG(INFO)
+      FML_LOG(INFO)
           << "Observatory port specified was malformed. Will default to "
           << settings.observatory_port;
     }
@@ -161,14 +170,15 @@ blink::Settings SettingsFromCommandLine(const fxl::CommandLine& command_line) {
   command_line.GetOptionValue(FlagForSwitch(Switch::FlutterAssetsDir),
                               &settings.assets_path);
 
-  command_line.GetOptionValue(FlagForSwitch(Switch::Snapshot),
-                              &settings.script_snapshot_path);
-
   command_line.GetOptionValue(FlagForSwitch(Switch::MainDartFile),
                               &settings.main_dart_file_path);
 
   command_line.GetOptionValue(FlagForSwitch(Switch::Packages),
                               &settings.packages_file_path);
+
+  std::string aot_shared_library_path;
+  command_line.GetOptionValue(FlagForSwitch(Switch::AotSharedLibraryPath),
+                              &aot_shared_library_path);
 
   std::string aot_snapshot_path;
   command_line.GetOptionValue(FlagForSwitch(Switch::AotSnapshotPath),
@@ -191,7 +201,9 @@ blink::Settings SettingsFromCommandLine(const fxl::CommandLine& command_line) {
       FlagForSwitch(Switch::AotIsolateSnapshotInstructions),
       &aot_isolate_snapshot_instr_filename);
 
-  if (aot_snapshot_path.size() > 0) {
+  if (aot_shared_library_path.size() > 0) {
+    settings.application_library_path = aot_shared_library_path;
+  } else if (aot_snapshot_path.size() > 0) {
     settings.vm_snapshot_data_path = fml::paths::JoinPaths(
         {aot_snapshot_path, aot_vm_snapshot_data_filename});
     settings.vm_snapshot_instr_path = fml::paths::JoinPaths(
@@ -221,7 +233,8 @@ blink::Settings SettingsFromCommandLine(const fxl::CommandLine& command_line) {
       settings.dart_flags.push_back(*it);
   }
 
-#if FLUTTER_RUNTIME_MODE != FLUTTER_RUNTIME_MODE_RELEASE
+#if FLUTTER_RUNTIME_MODE != FLUTTER_RUNTIME_MODE_RELEASE && \
+    FLUTTER_RUNTIME_MODE != FLUTTER_RUNTIME_MODE_DYNAMIC_RELEASE
   settings.trace_skia =
       command_line.HasOption(FlagForSwitch(Switch::TraceSkia));
 #endif

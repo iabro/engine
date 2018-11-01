@@ -258,6 +258,8 @@ Int32List _encodeTextStyle(
   double height,
   Locale locale,
   Paint background,
+  Paint foreground,
+  List<Shadow> shadows
 ) {
   final Int32List result = new Int32List(8);
   if (color != null) {
@@ -316,6 +318,14 @@ Int32List _encodeTextStyle(
     result[0] |= 1 << 14;
     // Passed separately to native.
   }
+  if (foreground != null) {
+    result[0] |= 1 << 15;
+    // Passed separately to native.
+  }
+  if (shadows != null) {
+    result[0] |= 1 << 16;
+    // Passed separately to native.
+  }
   return result;
 }
 
@@ -323,7 +333,7 @@ Int32List _encodeTextStyle(
 class TextStyle {
   /// Creates a new TextStyle object.
   ///
-  /// * `color`: The color to use when painting the text.
+  /// * `color`: The color to use when painting the text. If this is specified, `foreground` must be null.
   /// * `decoration`: The decorations to paint near the text (e.g., an underline).
   /// * `decorationColor`: The color in which to paint the text decorations.
   /// * `decorationStyle`: The style in which to paint the text decorations (e.g., dashed).
@@ -337,6 +347,7 @@ class TextStyle {
   /// * `height`: The height of this text span, as a multiple of the font size.
   /// * `locale`: The locale used to select region-specific glyphs.
   /// * `background`: The paint drawn as a background for the text.
+  /// * `foreground`: The paint used to draw the text. If this is specified, `color` must be null.
   TextStyle({
     Color color,
     TextDecoration decoration,
@@ -352,7 +363,13 @@ class TextStyle {
     double height,
     Locale locale,
     Paint background,
-  }) : _encoded = _encodeTextStyle(
+    Paint foreground,
+    List<Shadow> shadows,
+  }) : assert(color == null || foreground == null,
+         'Cannot provide both a color and a foreground\n'
+         'The color argument is just a shorthand for "foreground: new Paint()..color = color".'
+       ),
+       _encoded = _encodeTextStyle(
          color,
          decoration,
          decorationColor,
@@ -367,6 +384,8 @@ class TextStyle {
          height,
          locale,
          background,
+         foreground,
+         shadows,
        ),
        _fontFamily = fontFamily ?? '',
        _fontSize = fontSize,
@@ -374,7 +393,9 @@ class TextStyle {
        _wordSpacing = wordSpacing,
        _height = height,
        _locale = locale,
-       _background = background;
+       _background = background,
+       _foreground = foreground,
+       _shadows = shadows;
 
   final Int32List _encoded;
   final String _fontFamily;
@@ -384,6 +405,8 @@ class TextStyle {
   final double _height;
   final Locale _locale;
   final Paint _background;
+  final Paint _foreground;
+  final List<Shadow> _shadows;
 
   @override
   bool operator ==(dynamic other) {
@@ -398,35 +421,40 @@ class TextStyle {
         _wordSpacing != typedOther._wordSpacing ||
         _height != typedOther._height ||
         _locale != typedOther._locale ||
-        _background != typedOther._background)
+        _background != typedOther._background ||
+        _foreground != typedOther._foreground)
      return false;
     for (int index = 0; index < _encoded.length; index += 1) {
       if (_encoded[index] != typedOther._encoded[index])
         return false;
     }
+    if (!Shadow._shadowsListEquals(_shadows, typedOther._shadows))
+      return false;
     return true;
   }
 
   @override
-  int get hashCode => hashValues(hashList(_encoded), _fontFamily, _fontSize, _letterSpacing, _wordSpacing, _height, _locale, _background);
+  int get hashCode => hashValues(hashList(_encoded), _fontFamily, _fontSize, _letterSpacing, _wordSpacing, _height, _locale, _background, _foreground);
 
   @override
   String toString() {
     return 'TextStyle('
-             'color: ${          _encoded[0] & 0x0002 == 0x0002 ? new Color(_encoded[1])                  : "unspecified"}, '
-             'decoration: ${     _encoded[0] & 0x0004 == 0x0004 ? new TextDecoration._(_encoded[2])       : "unspecified"}, '
-             'decorationColor: ${_encoded[0] & 0x0008 == 0x0008 ? new Color(_encoded[3])                  : "unspecified"}, '
-             'decorationStyle: ${_encoded[0] & 0x0010 == 0x0010 ? TextDecorationStyle.values[_encoded[4]] : "unspecified"}, '
-             'fontWeight: ${     _encoded[0] & 0x0020 == 0x0020 ? FontWeight.values[_encoded[5]]          : "unspecified"}, '
-             'fontStyle: ${      _encoded[0] & 0x0040 == 0x0040 ? FontStyle.values[_encoded[6]]           : "unspecified"}, '
-             'textBaseline: ${   _encoded[0] & 0x0080 == 0x0080 ? TextBaseline.values[_encoded[7]]        : "unspecified"}, '
-             'fontFamily: ${     _encoded[0] & 0x0100 == 0x0100 ? _fontFamily                             : "unspecified"}, '
-             'fontSize: ${       _encoded[0] & 0x0200 == 0x0200 ? _fontSize                               : "unspecified"}, '
-             'letterSpacing: ${  _encoded[0] & 0x0400 == 0x0400 ? "${_letterSpacing}x"                    : "unspecified"}, '
-             'wordSpacing: ${    _encoded[0] & 0x0800 == 0x0800 ? "${_wordSpacing}x"                      : "unspecified"}, '
-             'height: ${         _encoded[0] & 0x1000 == 0x1000 ? "${_height}x"                           : "unspecified"}, '
-             'locale: ${         _encoded[0] & 0x2000 == 0x2000 ? _locale                                 : "unspecified"}, '
-             'background: ${     _encoded[0] & 0x4000 == 0x4000 ? _background                             : "unspecified"}'
+             'color: ${          _encoded[0] & 0x00002 == 0x00002 ? new Color(_encoded[1])                  : "unspecified"}, '
+             'decoration: ${     _encoded[0] & 0x00004 == 0x00004 ? new TextDecoration._(_encoded[2])       : "unspecified"}, '
+             'decorationColor: ${_encoded[0] & 0x00008 == 0x00008 ? new Color(_encoded[3])                  : "unspecified"}, '
+             'decorationStyle: ${_encoded[0] & 0x00010 == 0x00010 ? TextDecorationStyle.values[_encoded[4]] : "unspecified"}, '
+             'fontWeight: ${     _encoded[0] & 0x00020 == 0x00020 ? FontWeight.values[_encoded[5]]          : "unspecified"}, '
+             'fontStyle: ${      _encoded[0] & 0x00040 == 0x00040 ? FontStyle.values[_encoded[6]]           : "unspecified"}, '
+             'textBaseline: ${   _encoded[0] & 0x00080 == 0x00080 ? TextBaseline.values[_encoded[7]]        : "unspecified"}, '
+             'fontFamily: ${     _encoded[0] & 0x00100 == 0x00100 ? _fontFamily                             : "unspecified"}, '
+             'fontSize: ${       _encoded[0] & 0x00200 == 0x00200 ? _fontSize                               : "unspecified"}, '
+             'letterSpacing: ${  _encoded[0] & 0x00400 == 0x00400 ? "${_letterSpacing}x"                    : "unspecified"}, '
+             'wordSpacing: ${    _encoded[0] & 0x00800 == 0x00800 ? "${_wordSpacing}x"                      : "unspecified"}, '
+             'height: ${         _encoded[0] & 0x01000 == 0x01000 ? "${_height}x"                           : "unspecified"}, '
+             'locale: ${         _encoded[0] & 0x02000 == 0x02000 ? _locale                                 : "unspecified"}, '
+             'background: ${     _encoded[0] & 0x04000 == 0x04000 ? _background                             : "unspecified"}, '
+             'foreground: ${     _encoded[0] & 0x08000 == 0x08000 ? _foreground                             : "unspecified"}, '
+             'shadows: ${        _encoded[0] & 0x10000 == 0x10000 ? _shadows                                : "unspecified"}'
            ')';
   }
 }
@@ -734,6 +762,7 @@ class TextBox {
     this.direction,
   );
 
+  @pragma('vm:entry-point')
   TextBox._(
     this.left,
     this.top,
@@ -918,6 +947,67 @@ class ParagraphConstraints {
   String toString() => '$runtimeType(width: $width)';
 }
 
+/// Defines various ways to vertically bound the boxes returned by
+/// [Paragraph.getBoxesForRange].
+enum BoxHeightStyle {
+    /// Provide tight bounding boxes that fit heights per run. This style may result
+    /// in uneven bounding boxes that do not nicely connect with adjacent boxes.
+    tight,
+
+    /// The height of the boxes will be the maximum height of all runs in the
+    /// line. All boxes in the same line will be the same height. This does not
+    /// guarantee that the boxes will cover the entire vertical height of the line
+    /// when there is additional line spacing.
+    ///
+    /// See [RectHeightStyle.includeLineSpacingTop], [RectHeightStyle.includeLineSpacingMiddle],
+    /// and [RectHeightStyle.includeLineSpacingBottom] for styles that will cover
+    /// the entire line.
+    max,
+
+    /// Extends the top and bottom edge of the bounds to fully cover any line
+    /// spacing.
+    ///
+    /// The top and bottom of each box will cover half of the
+    /// space above and half of the space below the line.
+    ///
+    /// {@template flutter.dart:ui.boxHeightStyle.includeLineSpacing}
+    /// The top edge of each line should be the same as the bottom edge
+    /// of the line above. There should be no gaps in vertical coverage given any
+    /// amount of line spacing. Line spacing is not included above the first line
+    /// and below the last line due to no additional space present there.
+    /// {@endtemplate}
+    includeLineSpacingMiddle,
+
+    /// Extends the top edge of the bounds to fully cover any line spacing.
+    ///
+    /// The line spacing will be added to the top of the box.
+    ///
+    /// {@macro flutter.dart:ui.rectHeightStyle.includeLineSpacing}
+    includeLineSpacingTop,
+
+    /// Extends the bottom edge of the bounds to fully cover any line spacing.
+    ///
+    /// The line spacing will be added to the bottom of the box.
+    ///
+    /// {@macro flutter.dart:ui.boxHeightStyle.includeLineSpacing}
+    includeLineSpacingBottom,
+}
+
+/// Defines various ways to horizontally bound the boxes returned by
+/// [Paragraph.getBoxesForRange].
+enum BoxWidthStyle {
+    // Provide tight bounding boxes that fit widths to the runs of each line
+    // independently.
+    tight,
+
+    /// Adds up to two additional boxes as needed at the beginning and/or end
+    /// of each line so that the widths of the boxes in line are the same width
+    /// as the widest line in the paragraph. The additional boxes on each line
+    /// are only added when the relevant box at the relevant edge of that line
+    /// does not span the maximum width of the paragraph.
+    max,
+}
+
 /// A paragraph of text.
 ///
 /// A paragraph retains the size and position of each glyph in the text and can
@@ -927,11 +1017,13 @@ class ParagraphConstraints {
 ///
 /// Paragraphs can be displayed on a [Canvas] using the [Canvas.drawParagraph]
 /// method.
+@pragma('vm:entry-point')
 class Paragraph extends NativeFieldWrapperClass2 {
   /// This class is created by the engine, and should not be instantiated
   /// or extended directly.
   ///
   /// To create a [Paragraph] object, use a [ParagraphBuilder].
+  @pragma('vm:entry-point')
   Paragraph._();
 
   /// The amount of horizontal space this paragraph occupies.
@@ -980,7 +1072,22 @@ class Paragraph extends NativeFieldWrapperClass2 {
   void _layout(double width) native 'Paragraph_layout';
 
   /// Returns a list of text boxes that enclose the given text range.
-  List<TextBox> getBoxesForRange(int start, int end) native 'Paragraph_getRectsForRange';
+  ///
+  /// The [boxHeightStyle] and [boxWidthStyle] parameters allow customization
+  /// of how the boxes are bound vertically and horizontally. Both style
+  /// parameters default to the tight option, which will provide close-fitting
+  /// boxes and will not account for any line spacing.
+  ///
+  /// The [boxHeightStyle] and [boxWidthStyle] parameters must not be null.
+  ///
+  /// See [BoxHeightStyle] and [BoxWidthStyle] for full descriptions of each option.
+  List<TextBox> getBoxesForRange(int start, int end, {BoxHeightStyle boxHeightStyle = BoxHeightStyle.tight, BoxWidthStyle boxWidthStyle = BoxWidthStyle.tight}) {
+    assert(boxHeightStyle != null);
+    assert(boxWidthStyle != null);
+    return _getBoxesForRange(start, end, boxHeightStyle.index, boxWidthStyle.index);
+  }
+
+  List<TextBox> _getBoxesForRange(int start, int end, int boxHeightStyle, int boxWidthStyle) native 'Paragraph_getRectsForRange';
 
   /// Returns the text position closest to the given offset.
   TextPosition getPositionForOffset(Offset offset) {
@@ -1017,16 +1124,18 @@ class Paragraph extends NativeFieldWrapperClass2 {
 /// After constructing a [Paragraph], call [Paragraph.layout] on it and then
 /// paint it with [Canvas.drawParagraph].
 class ParagraphBuilder extends NativeFieldWrapperClass2 {
+
   /// Creates a [ParagraphBuilder] object, which is used to create a
   /// [Paragraph].
+  @pragma('vm:entry-point')
   ParagraphBuilder(ParagraphStyle style) { _constructor(style._encoded, style._fontFamily, style._fontSize, style._lineHeight, style._ellipsis, _encodeLocale(style._locale)); }
   void _constructor(Int32List encoded, String fontFamily, double fontSize, double lineHeight, String ellipsis, String locale) native 'ParagraphBuilder_constructor';
 
   /// Applies the given style to the added text until [pop] is called.
   ///
   /// See [pop] for details.
-  void pushStyle(TextStyle style) => _pushStyle(style._encoded, style._fontFamily, style._fontSize, style._letterSpacing, style._wordSpacing, style._height, _encodeLocale(style._locale), style._background?._objects, style._background?._data);
-  void _pushStyle(Int32List encoded, String fontFamily, double fontSize, double letterSpacing, double wordSpacing, double height, String locale, List<dynamic> backgroundObjects, ByteData backgroundData) native 'ParagraphBuilder_pushStyle';
+  void pushStyle(TextStyle style) => _pushStyle(style._encoded, style._fontFamily, style._fontSize, style._letterSpacing, style._wordSpacing, style._height, _encodeLocale(style._locale), style._background?._objects, style._background?._data, style._foreground?._objects, style._foreground?._data, Shadow._encodeShadows(style._shadows));
+  void _pushStyle(Int32List encoded, String fontFamily, double fontSize, double letterSpacing, double wordSpacing, double height, String locale, List<dynamic> backgroundObjects, ByteData backgroundData, List<dynamic> foregroundObjects, ByteData foregroundData, ByteData shadowsData) native 'ParagraphBuilder_pushStyle';
 
   static String _encodeLocale(Locale locale) => locale?.toString() ?? '';
 
@@ -1055,3 +1164,16 @@ class ParagraphBuilder extends NativeFieldWrapperClass2 {
   /// cannot be used further.
   Paragraph build() native 'ParagraphBuilder_build';
 }
+
+/// Loads a font from a buffer and makes it available for rendering text.
+///
+/// * `list`: A list of bytes containing the font file.
+/// * `fontFamily`: The family name used to identify the font in text styles.
+///  If this is not provided, then the family name will be extracted from the font file.
+Future<void> loadFontFromList(Uint8List list, {String fontFamily}) {
+  return _futurize(
+    (_Callback<void> callback) => _loadFontFromList(list, callback, fontFamily)
+  );
+}
+
+String _loadFontFromList(Uint8List list, _Callback<void> callback, String fontFamily) native 'loadFontFromList';
