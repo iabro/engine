@@ -1,4 +1,4 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,22 +13,17 @@
 #include "flutter/fml/trace_event.h"
 #include "third_party/skia/include/utils/mac/SkCGUtils.h"
 
-namespace shell {
+namespace flutter {
 
 IOSSurfaceSoftware::IOSSurfaceSoftware(fml::scoped_nsobject<CALayer> layer,
-                                       FlutterPlatformViewsController& platform_views_controller)
-    : IOSSurface(platform_views_controller), layer_(std::move(layer)) {
-  UpdateStorageSizeIfNecessary();
-}
+                                       std::shared_ptr<IOSContext> context,
+                                       FlutterPlatformViewsController* platform_views_controller)
+    : IOSSurface(std::move(context), platform_views_controller), layer_(std::move(layer)) {}
 
 IOSSurfaceSoftware::~IOSSurfaceSoftware() = default;
 
 bool IOSSurfaceSoftware::IsValid() const {
   return layer_;
-}
-
-bool IOSSurfaceSoftware::ResourceContextMakeCurrent() {
-  return false;
 }
 
 void IOSSurfaceSoftware::UpdateStorageSizeIfNecessary() {
@@ -38,12 +33,12 @@ void IOSSurfaceSoftware::UpdateStorageSizeIfNecessary() {
   // Android oddities.
 }
 
-std::unique_ptr<Surface> IOSSurfaceSoftware::CreateGPUSurface() {
+std::unique_ptr<Surface> IOSSurfaceSoftware::CreateGPUSurface(GrDirectContext* gr_context) {
   if (!IsValid()) {
     return nullptr;
   }
 
-  auto surface = std::make_unique<GPUSurfaceSoftware>(this);
+  auto surface = std::make_unique<GPUSurfaceSoftware>(this, true /* render to surface */);
 
   if (!surface->IsValid()) {
     return nullptr;
@@ -64,7 +59,8 @@ sk_sp<SkSurface> IOSSurfaceSoftware::AcquireBackingStore(const SkISize& size) {
     return sk_surface_;
   }
 
-  SkImageInfo info = SkImageInfo::MakeN32(size.fWidth, size.fHeight, kPremul_SkAlphaType);
+  SkImageInfo info = SkImageInfo::MakeN32(size.fWidth, size.fHeight, kPremul_SkAlphaType,
+                                          SkColorSpace::MakeSRGB());
   sk_surface_ = SkSurface::MakeRaster(info, nullptr);
   return sk_surface_;
 }
@@ -123,17 +119,12 @@ bool IOSSurfaceSoftware::PresentBackingStore(sk_sp<SkSurface> backing_store) {
 
   layer_.get().contents = reinterpret_cast<id>(static_cast<CGImageRef>(pixmap_image));
 
-  GetPlatformViewsController().Present();
-
   return true;
 }
 
-flow::ExternalViewEmbedder* IOSSurfaceSoftware::GetExternalViewEmbedder() {
+// |GPUSurfaceSoftwareDelegate|
+ExternalViewEmbedder* IOSSurfaceSoftware::GetExternalViewEmbedder() {
   return this;
 }
-void IOSSurfaceSoftware::CompositeEmbeddedView(int view_id,
-                                               const flow::EmbeddedViewParams& params) {
-  GetPlatformViewsController().CompositeEmbeddedView(view_id, params);
-}
 
-}  // namespace shell
+}  // namespace flutter

@@ -1,4 +1,4 @@
-// Copyright 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,7 @@
 #include "third_party/tonic/dart_binding_macros.h"
 #include "third_party/tonic/dart_library_natives.h"
 
-namespace blink {
+namespace flutter {
 
 typedef CanvasImage Image;
 
@@ -37,15 +37,23 @@ Dart_Handle CanvasImage::toByteData(int format, Dart_Handle callback) {
 }
 
 void CanvasImage::dispose() {
+  auto hint_freed_delegate = UIDartState::Current()->GetHintFreedDelegate();
+  if (hint_freed_delegate) {
+    hint_freed_delegate->HintFreed(GetAllocationSize());
+  }
+  image_.reset();
   ClearDartWrapper();
 }
 
-size_t CanvasImage::GetAllocationSize() {
+size_t CanvasImage::GetAllocationSize() const {
   if (auto image = image_.get()) {
-    return image->width() * image->height() * 4;
+    const auto& info = image->imageInfo();
+    const auto kMipmapOverhead = 4.0 / 3.0;
+    const size_t image_byte_size = info.computeMinByteSize() * kMipmapOverhead;
+    return image_byte_size + sizeof(this);
   } else {
     return sizeof(CanvasImage);
   }
 }
 
-}  // namespace blink
+}  // namespace flutter

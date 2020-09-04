@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,16 +6,29 @@
 
 #include "flutter/fml/logging.h"
 
-namespace flow {
+namespace flutter {
 
-PictureLayer::PictureLayer() = default;
-
-PictureLayer::~PictureLayer() = default;
+PictureLayer::PictureLayer(const SkPoint& offset,
+                           SkiaGPUObject<SkPicture> picture,
+                           bool is_complex,
+                           bool will_change)
+    : offset_(offset),
+      picture_(std::move(picture)),
+      is_complex_(is_complex),
+      will_change_(will_change) {}
 
 void PictureLayer::Preroll(PrerollContext* context, const SkMatrix& matrix) {
+  TRACE_EVENT0("flutter", "PictureLayer::Preroll");
+
+#if defined(LEGACY_FUCHSIA_EMBEDDER)
+  CheckForChildLayerBelow(context);
+#endif
+
   SkPicture* sk_picture = picture();
 
-  if (auto cache = context->raster_cache) {
+  if (auto* cache = context->raster_cache) {
+    TRACE_EVENT0("flutter", "PictureLayer::RasterCache (Preroll)");
+
     SkMatrix ctm = matrix;
     ctm.postTranslate(offset_.x(), offset_.y());
 #ifndef SUPPORT_FRACTIONAL_TRANSLATION
@@ -34,22 +47,19 @@ void PictureLayer::Paint(PaintContext& context) const {
   FML_DCHECK(picture_.get());
   FML_DCHECK(needs_painting());
 
-  SkAutoCanvasRestore save(&context.canvas, true);
-  context.canvas.translate(offset_.x(), offset_.y());
+  SkAutoCanvasRestore save(context.leaf_nodes_canvas, true);
+  context.leaf_nodes_canvas->translate(offset_.x(), offset_.y());
 #ifndef SUPPORT_FRACTIONAL_TRANSLATION
-  context.canvas.setMatrix(
-      RasterCache::GetIntegralTransCTM(context.canvas.getTotalMatrix()));
+  context.leaf_nodes_canvas->setMatrix(RasterCache::GetIntegralTransCTM(
+      context.leaf_nodes_canvas->getTotalMatrix()));
 #endif
 
-  if (context.raster_cache) {
-    const SkMatrix& ctm = context.canvas.getTotalMatrix();
-    RasterCacheResult result = context.raster_cache->Get(*picture(), ctm);
-    if (result.is_valid()) {
-      result.draw(context.canvas);
-      return;
-    }
+  if (context.raster_cache &&
+      context.raster_cache->Draw(*picture(), *context.leaf_nodes_canvas)) {
+    TRACE_EVENT_INSTANT0("flutter", "raster cache hit");
+    return;
   }
-  context.canvas.drawPicture(picture());
+  picture()->playback(context.leaf_nodes_canvas);
 }
 
-}  // namespace flow
+}  // namespace flutter

@@ -1,10 +1,8 @@
-// Copyright 2018 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "flutter/lib/ui/painting/engine_layer.h"
-
-#include "flutter/flow/layers/container_layer.h"
 
 #include "third_party/tonic/converter/dart_converter.h"
 #include "third_party/tonic/dart_args.h"
@@ -13,11 +11,14 @@
 
 using tonic::ToDart;
 
-namespace blink {
+namespace flutter {
+
+EngineLayer::EngineLayer(std::shared_ptr<flutter::ContainerLayer> layer)
+    : layer_(layer) {}
 
 EngineLayer::~EngineLayer() = default;
 
-size_t EngineLayer::GetAllocationSize() {
+size_t EngineLayer::GetAllocationSize() const {
   // Provide an approximation of the total memory impact of this object to the
   // Dart GC.  The ContainerLayer may hold references to a tree of other layers,
   // which in turn may contain Skia objects.
@@ -30,4 +31,4 @@ IMPLEMENT_WRAPPERTYPEINFO(ui, EngineLayer);
 
 DART_BIND_ALL(EngineLayer, FOR_EACH_BINDING)
 
-}  // namespace blink
+}  // namespace flutter

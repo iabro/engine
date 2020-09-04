@@ -1,4 +1,4 @@
-// Copyright 2018 The Flutter Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,22 +26,29 @@
 
 @interface FlutterEngine () <FlutterViewEngineDelegate>
 
-- (shell::Shell&)shell;
+- (flutter::Shell&)shell;
 
-- (void)updateViewportMetrics:(blink::ViewportMetrics)viewportMetrics;
-- (void)dispatchPointerDataPacket:(std::unique_ptr<blink::PointerDataPacket>)packet;
+- (void)updateViewportMetrics:(flutter::ViewportMetrics)viewportMetrics;
+- (void)dispatchPointerDataPacket:(std::unique_ptr<flutter::PointerDataPacket>)packet;
 
 - (fml::RefPtr<fml::TaskRunner>)platformTaskRunner;
+- (fml::RefPtr<fml::TaskRunner>)RasterTaskRunner;
 
-- (fml::WeakPtr<shell::PlatformView>)platformView;
+- (fml::WeakPtr<flutter::PlatformView>)platformView;
 
-- (shell::Rasterizer::Screenshot)screenshot:(shell::Rasterizer::ScreenshotType)type
-                               base64Encode:(bool)base64Encode;
+- (flutter::Rasterizer::Screenshot)screenshot:(flutter::Rasterizer::ScreenshotType)type
+                                 base64Encode:(bool)base64Encode;
 
 - (FlutterPlatformPlugin*)platformPlugin;
-- (shell::FlutterPlatformViewsController*)platformViewsController;
+- (flutter::FlutterPlatformViewsController*)platformViewsController;
 - (FlutterTextInputPlugin*)textInputPlugin;
 - (void)launchEngine:(NSString*)entrypoint libraryURI:(NSString*)libraryOrNil;
+- (BOOL)createShell:(NSString*)entrypoint
+         libraryURI:(NSString*)libraryOrNil
+       initialRoute:(NSString*)initialRoute;
+- (void)attachView;
+- (void)notifyLowMemory;
+- (flutter::PlatformViewIOS*)iosPlatformView;
 
 @end
 

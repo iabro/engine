@@ -1,4 +1,4 @@
-// Copyright 2018 The Flutter Authors. All rights reserved.
+// Copyright 2013 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,6 +25,10 @@ namespace os_unix {
 
 void UniqueFDTraits::Free(int fd) {
   close(fd);
+}
+
+void UniqueDirTraits::Free(DIR* dir) {
+  closedir(dir);
 }
 
 }  // namespace os_unix
